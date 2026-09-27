@@ -21,4 +21,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Aestelwen-NoHammerBuildMenu-${{ env.VERSION }}
-          path: dist/Aestelwen-NoHammerBuildMenu-${{ env.VERSION }}
+          path: dist/Aestelwen-NoHammerBuildMenu-${{ env.VERSION }}/
