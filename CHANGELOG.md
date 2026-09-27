@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- Fixed README with example screenshot
+
 ## 0.1.0
 
 - Initial release
