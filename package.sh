@@ -11,11 +11,13 @@ VERSION=$(python3 -c "import json; print(json.load(open('manifest.json'))['versi
 dotnet build -c Release
 
 rm -rf dist
-mkdir -p "dist/$NAMESPACE-$NAME"
-cp "bin/Release/$NAME.dll" manifest.json README.md icon.png "dist/$NAMESPACE-$NAME/"
 
-(cd "dist/$NAMESPACE-$NAME" && zip -r "../$NAMESPACE-$NAME-$VERSION.zip" .)
-echo "Ready: dist/$NAMESPACE-$NAME-$VERSION.zip"
+OUTPUT_DIR="dist/$NAMESPACE-$NAME-$VERSION"
+
+mkdir -p "$OUTPUT_DIR"
+cp "bin/Release/$NAME.dll" manifest.json README.md icon.png "$OUTPUT_DIR/"
+
+(cd "$OUTPUT_DIR" && zip -r "../$NAMESPACE-$NAME-$VERSION.zip" .)
 
 # Export version for the GitHub Actions artifact upload step
 if [[ -n "${GITHUB_ENV:-}" ]]; then
