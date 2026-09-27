@@ -1,5 +1,6 @@
 using BepInEx;
 using BepInEx.Configuration;
+using HarmonyLib;
 using Jotunn.Configs;
 using Jotunn.Managers;
 using UnityEngine;
@@ -16,9 +17,11 @@ namespace NoHammerBuildMenu
 
         private const string HammerPrefabName = "Hammer";
         private const string ButtonName = "NoHammerBuildMenu_Toggle";
+        private const string ButtonQueryName = ButtonName + "!" + PluginGUID;
 
         private ConfigEntry<KeyCode> _keybind;
-        private ItemDrop.ItemData _phantomHammer;
+        private static ItemDrop.ItemData _phantomHammer;
+        private Harmony _harmony;
 
         private void Awake()
         {
@@ -29,14 +32,19 @@ namespace NoHammerBuildMenu
                 "Equips a virtual hammer and opens the build menu, without needing a real " +
                 "hammer in your inventory. Rebindable from the in-game controls menu.");
 
-            // Registering through Jotunn's InputManager makes this show up in Valheim's
-            // own "Rebind controls" screen, the same as any vanilla key.
             InputManager.Instance.AddButton(PluginGUID, new ButtonConfig
             {
                 Name = ButtonName,
-                Config = _keybind,
-                HintToken = "$nohammerbuildmenu_toggle"
+                Config = _keybind
             });
+
+            _harmony = new Harmony(PluginGUID);
+            _harmony.PatchAll();
+        }
+
+        private void OnDestroy()
+        {
+            _harmony?.UnpatchSelf();
         }
 
         private void Update()
@@ -44,6 +52,7 @@ namespace NoHammerBuildMenu
             Player player = Player.m_localPlayer;
             if (player == null)
             {
+                _phantomHammer = null;
                 return;
             }
 
@@ -53,7 +62,7 @@ namespace NoHammerBuildMenu
                 return;
             }
 
-            if (ZInput.GetButtonDown(ButtonName))
+            if (ZInput.GetButtonDown(ButtonQueryName))
             {
                 ToggleBuildMenu(player);
             }
@@ -103,6 +112,22 @@ namespace NoHammerBuildMenu
             // It's just never added to player.GetInventory(), so it never takes a slot
             // and never needs re-crafting after death.
             _phantomHammer = realHammer.m_itemData.Clone();
+        }
+
+        // Makes EquipItem accept the phantom hammer despite it not being in the player's inventory.
+        [HarmonyPatch(typeof(Inventory), nameof(Inventory.ContainsItem))]
+        private static class Inventory_ContainsItem_Patch
+        {
+            [HarmonyPrefix]
+            private static bool Prefix(ItemDrop.ItemData item, ref bool __result)
+            {
+                if (_phantomHammer != null && item == _phantomHammer)
+                {
+                    __result = true;
+                    return false;
+                }
+                return true;
+            }
         }
     }
 }
