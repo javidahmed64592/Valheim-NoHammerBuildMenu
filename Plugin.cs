@@ -3,6 +3,7 @@ using BepInEx.Configuration;
 using HarmonyLib;
 using Jotunn.Configs;
 using Jotunn.Managers;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace NoHammerBuildMenu
@@ -105,13 +106,21 @@ namespace NoHammerBuildMenu
                 return;
             }
 
-            ItemDrop realHammer = hammerPrefab.GetComponent<ItemDrop>();
+            ItemDrop itemDrop = hammerPrefab.GetComponent<ItemDrop>();
 
-            // Clone() reuses the same SharedData (model, icon, and crucially the
-            // build-piece table) as the real hammer, so it looks and behaves identically.
-            // It's just never added to player.GetInventory(), so it never takes a slot
-            // and never needs re-crafting after death.
-            _phantomHammer = realHammer.m_itemData.Clone();
+            // Build a fresh ItemData rather than Clone()-ing the prefab's data: raw prefab
+            // item data has uninitialised fields (e.g. m_customData = null) that
+            // SetupVisEquipment dereferences in Valheim l-1.0.x, causing a crash.
+            _phantomHammer = new ItemDrop.ItemData
+            {
+                m_shared = itemDrop.m_itemData.m_shared,
+                m_dropPrefab = hammerPrefab,
+                m_stack = 1,
+                m_quality = 1,
+                m_variant = 0,
+                m_durability = itemDrop.m_itemData.m_shared.m_maxDurability,
+                m_customData = new Dictionary<string, string>()
+            };
         }
 
         // Makes EquipItem accept the phantom hammer despite it not being in the player's inventory.
@@ -127,6 +136,33 @@ namespace NoHammerBuildMenu
                     return false;
                 }
                 return true;
+            }
+        }
+
+        // SetupVisEquipment in Valheim l-1.0.x crashes with a NullReferenceException when
+        // equipping items that didn't come through the normal inventory flow. Work around it
+        // by hiding the phantom from the method and setting the visual directly afterward.
+        [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.SetupVisEquipment))]
+        private static class Humanoid_SetupVisEquipment_Patch
+        {
+            [HarmonyPrefix]
+            private static void Prefix(Humanoid __instance, out ItemDrop.ItemData __state)
+            {
+                __state = null;
+                if (_phantomHammer != null && __instance.GetRightItem() == _phantomHammer)
+                {
+                    __state = _phantomHammer;
+                    __instance.m_rightItem = null;
+                }
+            }
+
+            [HarmonyPostfix]
+            private static void Postfix(Humanoid __instance, ItemDrop.ItemData __state)
+            {
+                if (__state == null) return;
+                __instance.m_rightItem = __state;
+                if (__instance is Player player)
+                    player.m_visEquipment?.SetRightHandEquipped(__state.m_variant, __state.m_quality);
             }
         }
     }
