@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>NoHammerBuildMenu</AssemblyName>
+    <Description>Configurable keybind that opens Valheim's build menu without needing a hammer in your inventory.</Description>
+    <Version>0.1.0</Version>
+    <LangVersion>latest</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <!-- ====================================================================
+       EDIT THESE PATHS to point at your local Valheim install.
+       Typical Steam-on-Linux locations:
+         ~/.local/share/Steam/steamapps/common/Valheim
+         ~/.steam/steam/steamapps/common/Valheim
+       Find yours with: find ~ -iname "valheim.x86_64" 2>/dev/null
+       ==================================================================== -->
+  <PropertyGroup>
+    <ValheimDir>/home/YOUR_USER/.local/share/Steam/steamapps/common/Valheim</ValheimDir>
+    <ManagedDir>$(ValheimDir)/valheim_Data/Managed</ManagedDir>
+    <BepInExCoreDir>$(ValheimDir)/BepInEx/core</BepInExCoreDir>
+    <BepInExPluginsDir>$(ValheimDir)/BepInEx/plugins</BepInExPluginsDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Lets `dotnet build` target net472 on Linux without a Windows targeting pack. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <!-- Build-time publicizer: makes private fields/methods on game assemblies visible
+         to the compiler. Not required for the code as written below (everything used
+         here is public API), but left in so you can reach internals if you extend the mod. -->
+    <PackageReference Include="Krafs.Publicizer" Version="2.2.1" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Game + BepInEx assemblies, referenced directly from your install.
+         Private=false means they're used only to compile against - never copied
+         into your output folder or redistributed with the mod. -->
+    <Reference Include="assembly_valheim">
+      <HintPath>$(ManagedDir)/assembly_valheim.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_utils">
+      <HintPath>$(ManagedDir)/assembly_utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ManagedDir)/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(ManagedDir)/UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>$(BepInExCoreDir)/BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(BepInExCoreDir)/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Jotunn">
+      <HintPath>$(BepInExPluginsDir)/Jotunn/Jotunn.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Publicize Include="assembly_valheim" />
+  </ItemGroup>
+
+</Project>
