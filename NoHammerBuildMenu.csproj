@@ -11,28 +11,32 @@
 
   <!-- ====================================================================
        EDIT THESE PATHS to point at your local Valheim install.
-       Typical Steam-on-Linux locations:
-         ~/.local/share/Steam/steamapps/common/Valheim
-         ~/.steam/steam/steamapps/common/Valheim
-       Find yours with: find ~ -iname "valheim.x86_64" 2>/dev/null
+
+       ValheimDir: /path/to/steamapps/common/Valheim
+       BepInExProfileDir: /path/to/<mod manager>/profiles/<profile>/BepInEx
+
+       If using r2modman, this would be something like: /home/<user>/.config/r2modmanPlus-local/Valheim/profiles/<profile>/BepInEx
        ==================================================================== -->
   <PropertyGroup>
-    <ValheimDir>/home/YOUR_USER/.local/share/Steam/steamapps/common/Valheim</ValheimDir>
+    <ValheimDir>/path/to/steamapps/common/Valheim</ValheimDir>
+    <BepInExProfileDir>/path/to/mod manager/profiles/profile/BepInEx</BepInExProfileDir>
+
     <ManagedDir>$(ValheimDir)/valheim_Data/Managed</ManagedDir>
-    <BepInExCoreDir>$(ValheimDir)/BepInEx/core</BepInExCoreDir>
-    <BepInExPluginsDir>$(ValheimDir)/BepInEx/plugins</BepInExPluginsDir>
+    <BepInExCoreDir>$(BepInExProfileDir)/core</BepInExCoreDir>
+    <BepInExPluginsDir>$(BepInExProfileDir)/plugins</BepInExPluginsDir>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Lets `dotnet build` target net472 on Linux without a Windows targeting pack. -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <!-- Build-time publicizer: makes private fields/methods on game assemblies visible
-         to the compiler. Not required for the code as written below (everything used
-         here is public API), but left in so you can reach internals if you extend the mod. -->
+         to the compiler. -->
     <PackageReference Include="Krafs.Publicizer" Version="2.2.1" PrivateAssets="all" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- In CI (GitHub Actions) there is no local Valheim install, so game/BepInEx DLLs
+       come from NuGet packages instead. Locally they come from ValheimDir above. -->
+  <ItemGroup Condition="'$(GITHUB_ACTIONS)' != 'true'">
     <!-- Game + BepInEx assemblies, referenced directly from your install.
          Private=false means they're used only to compile against - never copied
          into your output folder or redistributed with the mod. -->
@@ -42,6 +46,10 @@
     </Reference>
     <Reference Include="assembly_utils">
       <HintPath>$(ManagedDir)/assembly_utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(ManagedDir)/UnityEngine.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
@@ -61,13 +69,39 @@
       <Private>false</Private>
     </Reference>
     <Reference Include="Jotunn">
-      <HintPath>$(BepInExPluginsDir)/Jotunn/Jotunn.dll</HintPath>
+      <HintPath>$(BepInExPluginsDir)/ValheimModding-Jotunn/Jotunn.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(GITHUB_ACTIONS)' != 'true'">
     <Publicize Include="assembly_valheim" />
   </ItemGroup>
+
+  <!-- CI-only: NuGet packages that bundle game + BepInEx + Jotunn DLLs.
+       ExcludeAssets="build" on JotunnLib prevents its build props from being
+       imported (those props expect a local Valheim install to resolve paths). -->
+  <ItemGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <PackageReference Include="Pfhoenix.Valheim.ModProjectReferences" Version="1.0.26" />
+    <PackageReference Include="JotunnLib" Version="2.30.2" ExcludeAssets="build" />
+  </ItemGroup>
+
+  <!-- ====================================================================
+       Local dev: Auto-deploy the built DLL to your r2modman profile.
+       Set DeployDir to your profile's BepInEx/plugins folder, e.g.:
+         /home/<user>/.config/r2modmanPlus-local/Valheim/profiles/<profile>/BepInEx/plugins
+       Leave empty to skip auto-deploy.
+       ==================================================================== -->
+  <PropertyGroup>
+    <DeployDir>/home/user/.config/r2modmanPlus-local/Valheim/profiles/profile/BepInEx/plugins</DeployDir>
+  </PropertyGroup>
+
+  <Target Name="Deploy" AfterTargets="Build"
+          Condition="'$(DeployDir)' != '' AND '$(GITHUB_ACTIONS)' != 'true'">
+    <MakeDir Directories="$(DeployDir)/$(AssemblyName)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployDir)/$(AssemblyName)" />
+    <Message Importance="High"
+             Text="Deployed $(TargetFileName) → $(DeployDir)/$(AssemblyName)/" />
+  </Target>
 
 </Project>
