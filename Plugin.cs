@@ -1,6 +1,6 @@
 using BepInEx;
 using BepInEx.Configuration;
-using Jotunn.Entities;
+using Jotunn.Configs;
 using Jotunn.Managers;
 using UnityEngine;
 
