@@ -1,0 +1,46 @@
+name: Package for Thunderstore
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  NAMESPACE: Aestelwen
+  NAME: NoHammerBuildMenu
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.x"
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build -c Release --no-restore
+      - name: Set Version
+        run: |
+          VERSION=$(python3 -c "import json; print(json.load(open('manifest.json'))['version_number'])")
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      - name: Package
+        run: |
+          rm -rf dist
+          mkdir -p "dist/${NAME}"
+          cp "bin/Release/${NAME}.dll" "dist/${NAME}/"
+          cp manifest.json README.md CHANGELOG.md icon.png "dist/${NAME}/"
+
+          cd "dist/${NAME}"
+          zip -r "../${NAMESPACE}-${NAME}-${VERSION}.zip" .
+          echo "Ready to upload: dist/${NAMESPACE}-${NAME}-${VERSION}.zip"
+      - name: Upload Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAMESPACE }}-${{ env.NAME }}-${{ env.VERSION }}
+          path: dist/${{ env.NAMESPACE }}-${{ env.NAME }}-${{ env.VERSION }}.zip
