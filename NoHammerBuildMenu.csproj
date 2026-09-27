@@ -86,22 +86,4 @@
     <PackageReference Include="JotunnLib" Version="2.30.2" ExcludeAssets="build" />
   </ItemGroup>
 
-  <!-- ====================================================================
-       Local dev: Auto-deploy the built DLL to your r2modman profile.
-       Set DeployDir to your profile's BepInEx/plugins folder, e.g.:
-         /home/<user>/.config/r2modmanPlus-local/Valheim/profiles/<profile>/BepInEx/plugins
-       Leave empty to skip auto-deploy.
-       ==================================================================== -->
-  <PropertyGroup>
-    <DeployDir>/home/user/.config/r2modmanPlus-local/Valheim/profiles/profile/BepInEx/plugins</DeployDir>
-  </PropertyGroup>
-
-  <Target Name="Deploy" AfterTargets="Build"
-          Condition="'$(DeployDir)' != '' AND '$(GITHUB_ACTIONS)' != 'true'">
-    <MakeDir Directories="$(DeployDir)/$(AssemblyName)" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployDir)/$(AssemblyName)" />
-    <Message Importance="High"
-             Text="Deployed $(TargetFileName) → $(DeployDir)/$(AssemblyName)/" />
-  </Target>
-
 </Project>
