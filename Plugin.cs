@@ -166,7 +166,10 @@ namespace NoHammerBuildMenu
                 if (__state == null) return;
                 __instance.m_rightItem = __state;
                 if (__instance is Player player)
-                    player.m_visEquipment?.SetRightHandEquipped(__state.m_variant, __state.m_quality);
+                    player.m_visEquipment?.SetRightItem(
+                        __state.m_dropPrefab.name.GetStableHashCode(),
+                        __state.m_quality
+                    );
             }
         }
     }
