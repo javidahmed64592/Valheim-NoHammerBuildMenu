@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix website link in manifest file
+
 ## 0.1.2
 
 - Made hammer invincible so it does not break
