@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.3
 
 - Fix website link in manifest file
 - Include CHANGELOG.md in the packaged mod files
