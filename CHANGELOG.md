@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Made hammer invincible so it does not break
+- The hammer is no longer invisible when equipped in the player's hand
+
 ## 0.1.1
 
 - Fixed README with example screenshot
