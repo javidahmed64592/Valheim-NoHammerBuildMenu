@@ -12,4 +12,4 @@ On keypress, the plugin calls the same public methods the game uses when you pic
 
 The below screenshot demonstrates the plugin in action, showing the build menu open without a hammer occupying an inventory slot.
 
-![NoHammerBuildMenu Example](https://github.com/javidahmed64592/Valheim-NoHammerBuildMenu/blob/main/game_screenshot.png)
+![NoHammerBuildMenu Example](https://github.com/javidahmed64592/Valheim-NoHammerBuildMenu/raw/main/game_screenshot.png)
