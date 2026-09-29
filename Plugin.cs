@@ -50,6 +50,10 @@ namespace NoHammerBuildMenu
 
         private void Update()
         {
+            // Keep phantom hammer at full durability so it never breaks or needs repair.
+            if (_phantomHammer != null)
+                _phantomHammer.m_durability = _phantomHammer.m_shared.m_maxDurability;
+
             Player player = Player.m_localPlayer;
             if (player == null)
             {
