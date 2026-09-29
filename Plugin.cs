@@ -14,7 +14,7 @@ namespace NoHammerBuildMenu
     {
         public const string PluginGUID = "javidahmed64592.nohammerbuildmenu";
         public const string PluginName = "No Hammer Build Menu";
-        public const string PluginVersion = "0.1.1";
+        public const string PluginVersion = "0.1.2";
 
         private const string HammerPrefabName = "Hammer";
         private const string ButtonName = "NoHammerBuildMenu_Toggle";
@@ -50,6 +50,10 @@ namespace NoHammerBuildMenu
 
         private void Update()
         {
+            // Keep phantom hammer at full durability so it never breaks or needs repair.
+            if (_phantomHammer != null)
+                _phantomHammer.m_durability = _phantomHammer.m_shared.m_maxDurability;
+
             Player player = Player.m_localPlayer;
             if (player == null)
             {
@@ -162,7 +166,10 @@ namespace NoHammerBuildMenu
                 if (__state == null) return;
                 __instance.m_rightItem = __state;
                 if (__instance is Player player)
-                    player.m_visEquipment?.SetRightHandEquipped(__state.m_variant, __state.m_quality);
+                    player.m_visEquipment?.SetRightItem(
+                        __state.m_dropPrefab.name.GetStableHashCode(),
+                        __state.m_quality
+                    );
             }
         }
     }
