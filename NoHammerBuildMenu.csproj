@@ -4,7 +4,7 @@
     <TargetFramework>net472</TargetFramework>
     <AssemblyName>NoHammerBuildMenu</AssemblyName>
     <Description>Configurable keybind that opens Valheim's build menu without needing a hammer in your inventory.</Description>
-    <Version>0.1.3</Version>
+    <Version>0.1.4</Version>
     <LangVersion>latest</LangVersion>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
