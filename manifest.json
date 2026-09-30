@@ -1,9 +1,9 @@
 {
   "name": "NoHammerBuildMenu",
   "description": "Configurable keybind to open the build menu without needing a hammer in your inventory.",
-  "version_number": "0.1.3",
+  "version_number": "0.1.4",
   "dependencies": [
-    "denikson-BepInExPack_Valheim-5.4.2333",
+    "denikson-BepInExPack_Valheim-5.4.2351",
     "ValheimModding-Jotunn-2.30.2"
   ],
   "website_url": "https://github.com/javidahmed64592/Valheim-NoHammerBuildMenu"
