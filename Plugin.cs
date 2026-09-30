@@ -23,6 +23,7 @@ namespace NoHammerBuildMenu
         private ConfigEntry<KeyCode> _keybind;
         private static ItemDrop.ItemData _phantomHammer;
         private Harmony _harmony;
+        private bool _knownRecipesRefreshed;
 
         private void Awake()
         {
@@ -58,7 +59,18 @@ namespace NoHammerBuildMenu
             if (player == null)
             {
                 _phantomHammer = null;
+                _knownRecipesRefreshed = false;
                 return;
+            }
+
+            // Build the phantom as soon as ObjectDB is ready.
+            EnsurePhantomHammer();
+
+            // Force a recipe scan once per session with the phantom's piece table.
+            if (!_knownRecipesRefreshed && _phantomHammer != null)
+            {
+                _knownRecipesRefreshed = true;
+                player.UpdateKnownRecipesList();
             }
 
             // Same guards vanilla input uses - don't fire while a menu/inventory/chat is open.
@@ -125,6 +137,22 @@ namespace NoHammerBuildMenu
                 m_durability = itemDrop.m_itemData.m_shared.m_maxDurability,
                 m_customData = new Dictionary<string, string>()
             };
+        }
+
+        // Includes the phantom hammer's piece table in every inventory scan so
+        // UpdateKnownRecipesList discovers its pieces even without a real hammer.
+        [HarmonyPatch(typeof(Inventory), nameof(Inventory.GetAllPieceTables))]
+        private static class Inventory_GetAllPieceTables_Patch
+        {
+            [HarmonyPostfix]
+            private static void Postfix(List<PieceTable> tables)
+            {
+                if (_phantomHammer?.m_shared?.m_buildPieces != null
+                    && !tables.Contains(_phantomHammer.m_shared.m_buildPieces))
+                {
+                    tables.Add(_phantomHammer.m_shared.m_buildPieces);
+                }
+            }
         }
 
         // Makes EquipItem accept the phantom hammer despite it not being in the player's inventory.
