@@ -15,7 +15,7 @@ rm -rf dist
 OUTPUT_DIR="dist/$NAMESPACE-$NAME-$VERSION"
 
 mkdir -p "$OUTPUT_DIR"
-cp "bin/Release/$NAME.dll" manifest.json CHANGELOG.md README.md icon.png "$OUTPUT_DIR/"
+cp "bin/Release/$NAME.dll" manifest.json CHANGELOG.md LICENSE README.md icon.png "$OUTPUT_DIR/"
 
 (cd "$OUTPUT_DIR" && zip -r "../$NAMESPACE-$NAME-$VERSION.zip" .)
 
