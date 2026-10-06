@@ -4,6 +4,7 @@ using HarmonyLib;
 using Jotunn.Configs;
 using Jotunn.Managers;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace NoHammerBuildMenu
@@ -24,6 +25,7 @@ namespace NoHammerBuildMenu
         private static ItemDrop.ItemData _phantomHammer;
         private Harmony _harmony;
         private bool _knownRecipesRefreshed;
+        private Piece _lastBuildPiece;
 
         private void Awake()
         {
@@ -60,6 +62,7 @@ namespace NoHammerBuildMenu
             {
                 _phantomHammer = null;
                 _knownRecipesRefreshed = false;
+                _lastBuildPiece = null;
                 return;
             }
 
@@ -82,6 +85,29 @@ namespace NoHammerBuildMenu
             if (ZInput.GetButtonDown(ButtonQueryName))
             {
                 ToggleBuildMenu(player);
+            }
+
+            if (player.InPlaceMode()
+                && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                && Input.GetMouseButtonDown(1))
+            {
+                ToggleRepairMode(player);
+            }
+        }
+
+        private void ToggleRepairMode(Player player)
+        {
+            if (player.InRepairMode())
+            {
+                if (_lastBuildPiece != null)
+                    player.SetSelectedPiece(_lastBuildPiece);
+            }
+            else
+            {
+                _lastBuildPiece = player.GetSelectedPiece();
+                Piece repairPiece = player.GetBuildPieces()?.FirstOrDefault(p => p.m_repairPiece);
+                if (repairPiece != null)
+                    player.SetSelectedPiece(repairPiece);
             }
         }
 
@@ -167,6 +193,22 @@ namespace NoHammerBuildMenu
                     __result = true;
                     return false;
                 }
+                return true;
+            }
+        }
+
+        // Prevents Shift+RMB from also opening the build menu while we use it for repair toggle.
+        [HarmonyPatch(typeof(Player), "UpdateBuildGuiInput")]
+        private static class Player_UpdateBuildGuiInput_Patch
+        {
+            [HarmonyPrefix]
+            private static bool Prefix(Player __instance)
+            {
+                if (__instance == Player.m_localPlayer
+                    && _phantomHammer != null
+                    && __instance.GetRightItem() == _phantomHammer
+                    && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)))
+                    return false;
                 return true;
             }
         }
