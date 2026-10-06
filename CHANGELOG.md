@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added repair mode toggle keybind (Shift + Right Mouse Button) to switch between repair mode and the last selected build piece.
+
 ## 0.1.4
 
 - Ensure hammer recipes are known without needing to hold a physical hammer
