@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.5
 
 - Added repair mode toggle keybind (Shift + Right Mouse Button) to switch between repair mode and the last selected build piece.
 
