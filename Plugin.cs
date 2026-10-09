@@ -3,6 +3,7 @@ using BepInEx.Configuration;
 using HarmonyLib;
 using Jotunn.Configs;
 using Jotunn.Managers;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -15,13 +16,28 @@ namespace NoHammerBuildMenu
     {
         public const string PluginGUID = "javidahmed64592.nohammerbuildmenu";
         public const string PluginName = "No Hammer Build Menu";
-        public const string PluginVersion = "0.1.5";
+        public const string PluginVersion = "0.2.0";
 
         private const string HammerPrefabName = "Hammer";
         private const string ButtonName = "NoHammerBuildMenu_Toggle";
         private const string ButtonQueryName = ButtonName + "!" + PluginGUID;
+        private const string GridButtonName = "NoHammerBuildMenu_ToggleGrid";
+        private const string GridButtonQueryName = GridButtonName + "!" + PluginGUID;
+
+        private const float GridMinSize = 0.1f;
+        private const float GridMaxSize = 8f;
+        private const float GridFineStep = 0.05f;
 
         private ConfigEntry<KeyCode> _keybind;
+        private static ConfigEntry<bool> _gridEnabled;
+        private static ConfigEntry<float> _gridSize;
+        private static ConfigEntry<Color> _gridColor;
+        private static readonly GridOverlay _gridOverlay = new GridOverlay();
+
+        // Latest aim point from Player.PieceRayTest, used to place the grid overlay.
+        private static int _aimFrame = -10;
+        private static Vector3 _aimPoint;
+        private static bool _aimOnPiece;
         private static ItemDrop.ItemData _phantomHammer;
         private Harmony _harmony;
         private bool _knownRecipesRefreshed;
@@ -42,6 +58,39 @@ namespace NoHammerBuildMenu
                 Config = _keybind
             });
 
+            ConfigEntry<KeyCode> gridKeybind = Config.Bind(
+                "Keybinds",
+                "Toggle Build Grid",
+                KeyCode.G,
+                "Toggles the world build grid (overlay and snap points) while placing pieces.");
+
+            InputManager.Instance.AddButton(PluginGUID, new ButtonConfig
+            {
+                Name = GridButtonName,
+                Config = gridKeybind
+            });
+
+            _gridEnabled = Config.Bind(
+                "Grid",
+                "Enabled",
+                true,
+                "Show a world grid while building and snap pieces to its vertices.");
+
+            _gridSize = Config.Bind(
+                "Grid",
+                "Snap Distance",
+                0.5f,
+                new ConfigDescription(
+                    "Distance in metres between grid vertices. While building, hold Shift and scroll " +
+                    "to change it by 0.05m, or hold Ctrl and scroll to double/halve it.",
+                    new AcceptableValueRange<float>(GridMinSize, GridMaxSize)));
+
+            _gridColor = Config.Bind(
+                "Grid",
+                "Line Colour",
+                new Color(1f, 1f, 1f, 0.5f),
+                "Colour and opacity of the grid lines.");
+
             _harmony = new Harmony(PluginGUID);
             _harmony.PatchAll();
         }
@@ -49,6 +98,7 @@ namespace NoHammerBuildMenu
         private void OnDestroy()
         {
             _harmony?.UnpatchSelf();
+            _gridOverlay.Destroy();
         }
 
         private void Update()
@@ -63,6 +113,7 @@ namespace NoHammerBuildMenu
                 _phantomHammer = null;
                 _knownRecipesRefreshed = false;
                 _lastBuildPiece = null;
+                _gridOverlay.Hide();
                 return;
             }
 
@@ -79,6 +130,7 @@ namespace NoHammerBuildMenu
             // Same guards vanilla input uses - don't fire while a menu/inventory/chat is open.
             if (Menu.IsVisible() || InventoryGui.IsVisible() || (Chat.instance != null && Chat.instance.HasFocus()))
             {
+                _gridOverlay.Hide();
                 return;
             }
 
@@ -93,6 +145,69 @@ namespace NoHammerBuildMenu
             {
                 ToggleRepairMode(player);
             }
+
+            if (ZInput.GetButtonDown(GridButtonQueryName) && player.InPlaceMode())
+            {
+                _gridEnabled.Value = !_gridEnabled.Value;
+                player.Message(MessageHud.MessageType.TopLeft, "Build grid " + (_gridEnabled.Value ? "on" : "off"));
+            }
+
+            if (GridActive(player))
+            {
+                HandleGridScroll(player);
+                UpdateGridOverlay();
+            }
+            else
+            {
+                _gridOverlay.Hide();
+            }
+        }
+
+        private static bool GridActive(Player player)
+        {
+            return _gridEnabled.Value
+                && player.InPlaceMode()
+                && !player.InRepairMode()
+                && player.m_placementGhost != null;
+        }
+
+        private static bool ShiftHeld() => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+
+        private static bool CtrlHeld() => Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+
+        // Shift+scroll: +/- 0.05m. Ctrl+scroll: double / halve.
+        private static void HandleGridScroll(Player player)
+        {
+            float scroll = Input.mouseScrollDelta.y;
+            if (scroll == 0f)
+                return;
+
+            float size = _gridSize.Value;
+            if (CtrlHeld())
+                size = scroll > 0f ? size * 2f : size / 2f;
+            else if (ShiftHeld())
+                size += Math.Sign(scroll) * GridFineStep;
+            else
+                return;
+
+            size = (float)Math.Round(Mathf.Clamp(size, GridMinSize, GridMaxSize), 4);
+            if (Mathf.Approximately(size, _gridSize.Value))
+                return;
+
+            _gridSize.Value = size;
+            player.Message(MessageHud.MessageType.TopLeft, $"Grid distance: {size:0.###}m");
+        }
+
+        private static void UpdateGridOverlay()
+        {
+            // The aim point is refreshed every frame by the PieceRayTest patch while placing.
+            if (Time.frameCount - _aimFrame > 2)
+            {
+                _gridOverlay.Hide();
+                return;
+            }
+
+            _gridOverlay.Show(_aimPoint, _gridSize.Value, _aimOnPiece, _aimPoint.y, _gridColor.Value);
         }
 
         private void ToggleRepairMode(Player player)
@@ -194,6 +309,80 @@ namespace NoHammerBuildMenu
                     return false;
                 }
                 return true;
+            }
+        }
+
+        // Moves the aimed placement point so one of the ghost's snap points (or its origin, if it
+        // has none) lands on the nearest grid vertex. This runs before vanilla positions the ghost
+        // and applies its own piece-to-piece snapping, so snap points of existing pieces within
+        // vanilla's snap range still win over the grid, and validity checks see the final position.
+        [HarmonyPatch(typeof(Player), "PieceRayTest")]
+        private static class Player_PieceRayTest_Patch
+        {
+            [HarmonyPostfix]
+            private static void Postfix(Player __instance, bool __result, object[] __args)
+            {
+                if (!__result
+                    || __instance != Player.m_localPlayer
+                    || !GridActive(__instance)
+                    || __args.Length < 3
+                    || !(__args[0] is Vector3 point))
+                    return;
+
+                GameObject ghost = __instance.m_placementGhost;
+                float size = _gridSize.Value;
+
+                // Snap point offsets relative to the ghost's origin, at its current rotation.
+                var snapPoints = new List<Transform>();
+                ghost.GetComponent<Piece>()?.GetSnapPoints(snapPoints);
+                var offsets = new List<Vector3>();
+                foreach (Transform t in snapPoints)
+                    offsets.Add(t.position - ghost.transform.position);
+                if (offsets.Count == 0)
+                    offsets.Add(Vector3.zero);
+
+                Vector3 bestDelta = Vector3.zero;
+                float bestDist = float.MaxValue;
+                foreach (Vector3 o in offsets)
+                {
+                    float x = point.x + o.x;
+                    float z = point.z + o.z;
+                    Vector3 delta = new Vector3(
+                        Mathf.Round(x / size) * size - x,
+                        0f,
+                        Mathf.Round(z / size) * size - z);
+                    float dist = delta.sqrMagnitude;
+                    if (dist < bestDist)
+                    {
+                        bestDist = dist;
+                        bestDelta = delta;
+                    }
+                }
+
+                point += bestDelta;
+                __args[0] = point;
+
+                _aimFrame = Time.frameCount;
+                _aimPoint = point;
+                _aimOnPiece = __args[2] is Piece && __args.Length > 1 && __args[1] is Vector3 normal && normal.y > 0.5f;
+            }
+        }
+
+        // Shift/Ctrl+scroll adjusts the grid, so stop vanilla from also using it to rotate the piece.
+        [HarmonyPatch]
+        private static class ZInput_GetMouseScrollWheel_Patch
+        {
+            private static System.Reflection.MethodBase TargetMethod() =>
+                AccessTools.Method(typeof(ZInput), "GetMouseScrollWheel");
+
+            private static bool Prepare() => TargetMethod() != null;
+
+            [HarmonyPostfix]
+            private static void Postfix(ref float __result)
+            {
+                Player player = Player.m_localPlayer;
+                if (player != null && (ShiftHeld() || CtrlHeld()) && GridActive(player))
+                    __result = 0f;
             }
         }
 
