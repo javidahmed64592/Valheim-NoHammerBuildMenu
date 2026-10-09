@@ -6,7 +6,6 @@ using Jotunn.Managers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using UnityEngine;
 
 namespace NoHammerBuildMenu
@@ -81,8 +80,6 @@ namespace NoHammerBuildMenu
                 "Line Colour",
                 new Color(1f, 1f, 1f, 0.5f),
                 "Colour and opacity of the grid lines.");
-
-            FindManualSnapField();
 
             _harmony = new Harmony(PluginGUID);
             _harmony.PatchAll();
@@ -187,64 +184,6 @@ namespace NoHammerBuildMenu
 
         private static bool ContainsHammer(string name) =>
             name != null && name.IndexOf("hammer", StringComparison.OrdinalIgnoreCase) >= 0;
-
-        // The game's manual snap point selection ("Snapping: Auto / Bottom 1 / ...") lives in a
-        // private Player field. Find it by name so a rename just disables the feature instead of
-        // breaking the plugin; candidates are logged to help diagnose that.
-        private static FieldInfo _manualSnapField;
-
-        private void FindManualSnapField()
-        {
-            var candidates = typeof(Player)
-                .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Where(f => f.FieldType == typeof(int) && f.Name.IndexOf("snap", StringComparison.OrdinalIgnoreCase) >= 0)
-                .ToList();
-
-            _manualSnapField = candidates.FirstOrDefault(f => f.Name.IndexOf("manual", StringComparison.OrdinalIgnoreCase) >= 0)
-                ?? candidates.FirstOrDefault();
-
-            Logger.LogInfo("Manual snap field: " + (_manualSnapField?.Name ?? "not found")
-                + " (candidates: " + string.Join(", ", candidates.Select(f => f.Name)) + ")");
-        }
-
-        // In Auto mode the game picks the anchor snap point dynamically (piece orientation, camera
-        // angle, targeted surface) and places it at the aim point. Rather than modelling that, read
-        // it back: last frame we returned _aimPoint, so the ghost snap point sitting there is the
-        // anchor the game used.
-        private const float AnchorTolerance = 0.1f;
-
-        private static bool TryFindAnchor(List<Transform> snapPoints, Vector3 origin, out Vector3 offset)
-        {
-            offset = Vector3.zero;
-            if (Time.frameCount - _aimFrame > 2)
-                return false;
-
-            Transform anchor = null;
-            float best = AnchorTolerance;
-            foreach (Transform t in snapPoints)
-            {
-                float d = Vector3.Distance(t.position, _aimPoint);
-                if (d < best)
-                {
-                    best = d;
-                    anchor = t;
-                }
-            }
-
-            if (anchor == null)
-                return false;
-
-            offset = anchor.position - origin;
-            return true;
-        }
-
-        // Index of the ghost snap point chosen by the player, or -1 for Auto / unknown.
-        private static int ManualSnapIndex(Player player)
-        {
-            if (_manualSnapField == null)
-                return -1;
-            return (int)_manualSnapField.GetValue(player);
-        }
 
         private static bool ShiftHeld() => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
@@ -399,80 +338,13 @@ namespace NoHammerBuildMenu
                     || !GridActive(__instance))
                     return;
 
-                GameObject ghost = __instance.m_placementGhost;
+                // The game positions the ghost so that its anchor sits exactly at `point`: the
+                // selected snap point in manual mode, otherwise the point on the piece's colliders
+                // closest to the aim point (which varies with orientation and targeted surface).
+                // So whatever the anchor is, snapping `point` itself puts it on the vertex.
                 float size = _gridSize.Value;
-
-                // Snap point offsets relative to the ghost's origin, at its current rotation.
-                var snapPoints = new List<Transform>();
-                ghost.GetComponent<Piece>()?.GetSnapPoints(snapPoints);
-
-                // With a specific snap point selected, the game places that snap point at the aim
-                // point (rather than the piece's origin), so the aim point itself goes on the vertex.
-                var offsets = new List<Vector3>();
-                int manual = ManualSnapIndex(__instance);
-                if (manual >= 0 && manual < snapPoints.Count)
-                {
-                    offsets.Add(Vector3.zero);
-                }
-                else if (TryFindAnchor(snapPoints, ghost.transform.position, out Vector3 anchorOffset))
-                {
-                    offsets.Add(anchorOffset);
-                }
-                else
-                {
-                    // Auto: pieces connect at their bottom, so only the lowest snap points are
-                    // candidates (otherwise a raised end of a beam or roof could take the vertex).
-                    // If the piece's origin is itself one of them (e.g. a roof's bottom corner),
-                    // that anchor wins.
-                    const float HeightTolerance = 0.05f;
-                    Vector3 origin = ghost.transform.position;
-                    float minY = float.MaxValue;
-                    foreach (Transform t in snapPoints)
-                        minY = Mathf.Min(minY, t.position.y);
-
-                    bool anchored = false;
-                    foreach (Transform t in snapPoints)
-                    {
-                        if (t.position.y > minY + HeightTolerance)
-                            continue;
-                        Vector3 offset = t.position - origin;
-                        if (new Vector2(offset.x, offset.z).magnitude < HeightTolerance)
-                            anchored = true;
-                    }
-
-                    foreach (Transform t in snapPoints)
-                    {
-                        if (t.position.y > minY + HeightTolerance)
-                            continue;
-                        Vector3 offset = t.position - origin;
-                        if (anchored && new Vector2(offset.x, offset.z).magnitude >= HeightTolerance)
-                            continue;
-                        offsets.Add(offset);
-                    }
-
-                    if (offsets.Count == 0)
-                        offsets.Add(Vector3.zero);
-                }
-
-                Vector3 bestDelta = Vector3.zero;
-                float bestDist = float.MaxValue;
-                foreach (Vector3 o in offsets)
-                {
-                    float x = point.x + o.x;
-                    float z = point.z + o.z;
-                    Vector3 delta = new Vector3(
-                        Mathf.Round(x / size) * size - x,
-                        0f,
-                        Mathf.Round(z / size) * size - z);
-                    float dist = delta.sqrMagnitude;
-                    if (dist < bestDist)
-                    {
-                        bestDist = dist;
-                        bestDelta = delta;
-                    }
-                }
-
-                point += bestDelta;
+                point.x = Mathf.Round(point.x / size) * size;
+                point.z = Mathf.Round(point.z / size) * size;
 
                 _aimFrame = Time.frameCount;
                 _aimPoint = point;

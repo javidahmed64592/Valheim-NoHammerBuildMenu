@@ -4,8 +4,8 @@
 
 - Added a world build grid: a visible grid overlay near your aim point (following the terrain, or flat on top of player-built floors) with snap points at every vertex. Pieces snap to grid vertices like they do to other pieces' snap points, and snapping to other pieces still takes priority.
 - Hold Ctrl and scroll to double or halve the grid distance (0.25m, 0.5m, 1m, 2m, 4m; 0.5m default).
-- The grid only applies while a hammer is equipped (the phantom hammer, the vanilla hammer, or modded hammers with "hammer" in their name), not the hoe or cultivator. When a specific snap point is selected (e.g. "Snapping: Bottom 1"), that snap point is the one placed on the grid vertex.
-- In `Auto` snapping, the snap point the game currently uses as the anchor (which varies with piece orientation, camera angle and targeted surface) is the one placed on the grid vertex; otherwise the lowest snap point is used.
+- The grid only applies while a hammer is equipped (the phantom hammer, the vanilla hammer, or modded hammers with "hammer" in their name), not the hoe or cultivator.
+- Whatever the game uses as the piece's anchor at the aim point (the selected snap point, or in `Auto` the part of the piece closest to the surface you are aiming at) is the part placed on the grid vertex.
 - Press Ctrl + Right Mouse Button while building to toggle the grid. Enabled state, distance and line colour are in the `Grid` config section.
 
 ## 0.1.5
