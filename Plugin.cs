@@ -6,6 +6,7 @@ using Jotunn.Managers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 
 namespace NoHammerBuildMenu
@@ -80,6 +81,8 @@ namespace NoHammerBuildMenu
                 "Line Colour",
                 new Color(1f, 1f, 1f, 0.5f),
                 "Colour and opacity of the grid lines.");
+
+            FindManualSnapField();
 
             _harmony = new Harmony(PluginGUID);
             _harmony.PatchAll();
@@ -158,7 +161,58 @@ namespace NoHammerBuildMenu
             return _gridEnabled.Value
                 && player.InPlaceMode()
                 && !player.InRepairMode()
-                && player.m_placementGhost != null;
+                && player.m_placementGhost != null
+                && IsHammerEquipped(player);
+        }
+
+        // The grid is for hammers only (not the hoe, cultivator, etc.). Besides the phantom
+        // hammer, any build tool with a piece table whose item, prefab or table name mentions
+        // "hammer" counts, which covers vanilla and modded hammers.
+        private static bool IsHammerEquipped(Player player)
+        {
+            ItemDrop.ItemData item = player.GetRightItem();
+            if (item == null)
+                return false;
+            if (item == _phantomHammer)
+                return true;
+
+            PieceTable table = item.m_shared?.m_buildPieces;
+            if (table == null)
+                return false;
+
+            return ContainsHammer(item.m_shared.m_name)
+                || ContainsHammer(item.m_dropPrefab != null ? item.m_dropPrefab.name : null)
+                || ContainsHammer(table.name);
+        }
+
+        private static bool ContainsHammer(string name) =>
+            name != null && name.IndexOf("hammer", StringComparison.OrdinalIgnoreCase) >= 0;
+
+        // The game's manual snap point selection ("Snapping: Auto / Bottom 1 / ...") lives in a
+        // private Player field. Find it by name so a rename just disables the feature instead of
+        // breaking the plugin; candidates are logged to help diagnose that.
+        private static FieldInfo _manualSnapField;
+
+        private void FindManualSnapField()
+        {
+            var candidates = typeof(Player)
+                .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                .Where(f => f.FieldType == typeof(int) && f.Name.IndexOf("snap", StringComparison.OrdinalIgnoreCase) >= 0)
+                .ToList();
+
+            _manualSnapField = candidates.FirstOrDefault(f => f.Name.IndexOf("manual", StringComparison.OrdinalIgnoreCase) >= 0)
+                ?? candidates.FirstOrDefault();
+
+            Logger.LogInfo("Manual snap field: " + (_manualSnapField?.Name ?? "not found")
+                + " (candidates: " + string.Join(", ", candidates.Select(f => f.Name)) + ")");
+        }
+
+        // Index of the ghost snap point chosen by the player, or -1 for Auto / unknown.
+        private static int ManualSnapIndex(Player player)
+        {
+            if (_manualSnapField == null)
+                return -1;
+            return (int)_manualSnapField.GetValue(player);
         }
 
         private static bool ShiftHeld() => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
@@ -320,6 +374,12 @@ namespace NoHammerBuildMenu
                 // Snap point offsets relative to the ghost's origin, at its current rotation.
                 var snapPoints = new List<Transform>();
                 ghost.GetComponent<Piece>()?.GetSnapPoints(snapPoints);
+
+                // With a specific snap point selected, that one (and only that one) goes on the vertex.
+                int manual = ManualSnapIndex(__instance);
+                if (manual >= 0 && manual < snapPoints.Count)
+                    snapPoints = new List<Transform> { snapPoints[manual] };
+
                 var offsets = new List<Vector3>();
                 foreach (Transform t in snapPoints)
                     offsets.Add(t.position - ghost.transform.position);
