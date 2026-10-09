@@ -320,13 +320,12 @@ namespace NoHammerBuildMenu
         private static class Player_PieceRayTest_Patch
         {
             [HarmonyPostfix]
-            private static void Postfix(Player __instance, bool __result, object[] __args)
+            private static void Postfix(Player __instance, bool __result, ref Vector3 point, ref Vector3 normal, ref Piece piece)
             {
+                // Only touch `point`: the other out params must keep the values vanilla produced.
                 if (!__result
                     || __instance != Player.m_localPlayer
-                    || !GridActive(__instance)
-                    || __args.Length < 3
-                    || !(__args[0] is Vector3 point))
+                    || !GridActive(__instance))
                     return;
 
                 GameObject ghost = __instance.m_placementGhost;
@@ -360,11 +359,10 @@ namespace NoHammerBuildMenu
                 }
 
                 point += bestDelta;
-                __args[0] = point;
 
                 _aimFrame = Time.frameCount;
                 _aimPoint = point;
-                _aimOnPiece = __args[2] is Piece && __args.Length > 1 && __args[1] is Vector3 normal && normal.y > 0.5f;
+                _aimOnPiece = piece != null && normal.y > 0.5f;
             }
         }
 

@@ -19,6 +19,7 @@ namespace NoHammerBuildMenu
         private GameObject _object;
         private Mesh _mesh;
         private bool _hasMesh;
+        private bool _warned;
 
         private float _builtSize;
         private Vector3 _builtCenter;
@@ -72,9 +73,16 @@ namespace NoHammerBuildMenu
             if (_object != null)
                 return true;
 
-            Shader shader = Shader.Find("Sprites/Default");
+            Shader shader = Shader.Find("Sprites/Default")
+                ?? Shader.Find("Legacy Shaders/Particles/Alpha Blended")
+                ?? Shader.Find("Hidden/Internal-Colored");
             if (shader == null)
+            {
+                if (!_warned)
+                    Debug.LogWarning("NoHammerBuildMenu: no usable shader found for the build grid overlay.");
+                _warned = true;
                 return false;
+            }
 
             _mesh = new Mesh { name = "NoHammerBuildMenu_Grid", indexFormat = IndexFormat.UInt32 };
             _mesh.MarkDynamic();
