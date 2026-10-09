@@ -207,6 +207,37 @@ namespace NoHammerBuildMenu
                 + " (candidates: " + string.Join(", ", candidates.Select(f => f.Name)) + ")");
         }
 
+        // In Auto mode the game picks the anchor snap point dynamically (piece orientation, camera
+        // angle, targeted surface) and places it at the aim point. Rather than modelling that, read
+        // it back: last frame we returned _aimPoint, so the ghost snap point sitting there is the
+        // anchor the game used.
+        private const float AnchorTolerance = 0.1f;
+
+        private static bool TryFindAnchor(List<Transform> snapPoints, Vector3 origin, out Vector3 offset)
+        {
+            offset = Vector3.zero;
+            if (Time.frameCount - _aimFrame > 2)
+                return false;
+
+            Transform anchor = null;
+            float best = AnchorTolerance;
+            foreach (Transform t in snapPoints)
+            {
+                float d = Vector3.Distance(t.position, _aimPoint);
+                if (d < best)
+                {
+                    best = d;
+                    anchor = t;
+                }
+            }
+
+            if (anchor == null)
+                return false;
+
+            offset = anchor.position - origin;
+            return true;
+        }
+
         // Index of the ghost snap point chosen by the player, or -1 for Auto / unknown.
         private static int ManualSnapIndex(Player player)
         {
@@ -382,6 +413,10 @@ namespace NoHammerBuildMenu
                 if (manual >= 0 && manual < snapPoints.Count)
                 {
                     offsets.Add(Vector3.zero);
+                }
+                else if (TryFindAnchor(snapPoints, ghost.transform.position, out Vector3 anchorOffset))
+                {
+                    offsets.Add(anchorOffset);
                 }
                 else
                 {
