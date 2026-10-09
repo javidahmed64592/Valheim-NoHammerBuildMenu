@@ -3,8 +3,10 @@ using BepInEx.Configuration;
 using HarmonyLib;
 using Jotunn.Configs;
 using Jotunn.Managers;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 
 namespace NoHammerBuildMenu
@@ -15,14 +17,30 @@ namespace NoHammerBuildMenu
     {
         public const string PluginGUID = "javidahmed64592.nohammerbuildmenu";
         public const string PluginName = "No Hammer Build Menu";
-        public const string PluginVersion = "0.1.5";
+        public const string PluginVersion = "0.2.0";
 
         private const string HammerPrefabName = "Hammer";
         private const string ButtonName = "NoHammerBuildMenu_Toggle";
         private const string ButtonQueryName = ButtonName + "!" + PluginGUID;
 
-        private ConfigEntry<KeyCode> _keybind;
+        // Grid distances are 0.25m doubled/halved, so they always line up with vanilla distances.
+        private const float GridMinSize = 0.25f;
+        private const float GridMaxSize = 4f;
+        private const float GridDefaultSize = 0.5f;
+        private static readonly float[] GridSizes = { 0.25f, 0.5f, 1f, 2f, 4f };
+
         private static ItemDrop.ItemData _phantomHammer;
+
+        private static ConfigEntry<bool> _gridEnabled;
+        private static ConfigEntry<float> _gridSize;
+        private static readonly GridOverlay _gridOverlay = new GridOverlay();
+
+        // Latest grid-snapped aim point from Player.PieceRayTest, used to place the grid overlay.
+        private static int _aimFrame = -10;
+        private static Vector3 _aimPoint;
+        private static bool _aimOnPiece;
+
+        private ConfigEntry<KeyCode> _keybind;
         private Harmony _harmony;
         private bool _knownRecipesRefreshed;
         private Piece _lastBuildPiece;
@@ -42,6 +60,25 @@ namespace NoHammerBuildMenu
                 Config = _keybind
             });
 
+            _gridEnabled = Config.Bind(
+                "Grid",
+                "Enabled",
+                true,
+                "Show a world grid while building and snap pieces to its vertices.");
+
+            _gridSize = Config.Bind(
+                "Grid",
+                "Snap Distance",
+                GridDefaultSize,
+                new ConfigDescription(
+                    "Distance in metres between grid vertices (0.25, 0.5, 1, 2 or 4). While building, " +
+                    "hold Ctrl and scroll to double or halve it.",
+                    new AcceptableValueRange<float>(GridMinSize, GridMaxSize)));
+
+            // Reject hand-edited values that aren't one of the doubling/halving steps.
+            if (Array.IndexOf(GridSizes, _gridSize.Value) < 0)
+                _gridSize.Value = GridDefaultSize;
+
             _harmony = new Harmony(PluginGUID);
             _harmony.PatchAll();
         }
@@ -49,6 +86,7 @@ namespace NoHammerBuildMenu
         private void OnDestroy()
         {
             _harmony?.UnpatchSelf();
+            _gridOverlay.Destroy();
         }
 
         private void Update()
@@ -63,6 +101,7 @@ namespace NoHammerBuildMenu
                 _phantomHammer = null;
                 _knownRecipesRefreshed = false;
                 _lastBuildPiece = null;
+                _gridOverlay.Hide();
                 return;
             }
 
@@ -79,6 +118,7 @@ namespace NoHammerBuildMenu
             // Same guards vanilla input uses - don't fire while a menu/inventory/chat is open.
             if (Menu.IsVisible() || InventoryGui.IsVisible() || (Chat.instance != null && Chat.instance.HasFocus()))
             {
+                _gridOverlay.Hide();
                 return;
             }
 
@@ -87,12 +127,86 @@ namespace NoHammerBuildMenu
                 ToggleBuildMenu(player);
             }
 
-            if (player.InPlaceMode()
-                && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-                && Input.GetMouseButtonDown(1))
+            if (player.InPlaceMode() && Input.GetMouseButtonDown(1))
             {
-                ToggleRepairMode(player);
+                if (ShiftHeld())
+                    ToggleRepairMode(player);
+                else if (CtrlHeld())
+                    ToggleGrid(player);
             }
+
+            UpdateGrid(player);
+        }
+
+        private static void ToggleGrid(Player player)
+        {
+            _gridEnabled.Value = !_gridEnabled.Value;
+            player.Message(MessageHud.MessageType.TopLeft, "Build grid " + (_gridEnabled.Value ? "on" : "off"));
+        }
+
+        private static void UpdateGrid(Player player)
+        {
+            // The aim point is refreshed every frame by the PieceRayTest patch while placing.
+            if (!GridActive(player) || Time.frameCount - _aimFrame > 2)
+            {
+                _gridOverlay.Hide();
+                return;
+            }
+
+            HandleGridScroll(player);
+            _gridOverlay.Show(_aimPoint, _gridSize.Value, _aimOnPiece);
+        }
+
+        private static bool GridActive(Player player)
+        {
+            return _gridEnabled.Value
+                && player.InPlaceMode()
+                && !player.InRepairMode()
+                && player.m_placementGhost != null
+                && IsHammerEquipped(player);
+        }
+
+        // The grid is for hammers only (not the hoe, cultivator, etc.). Besides the phantom
+        // hammer, any build tool with a piece table whose item, prefab or table name mentions
+        // "hammer" counts, which covers vanilla and modded hammers.
+        private static bool IsHammerEquipped(Player player)
+        {
+            ItemDrop.ItemData item = player.GetRightItem();
+            if (item == null)
+                return false;
+            if (item == _phantomHammer)
+                return true;
+
+            PieceTable table = item.m_shared?.m_buildPieces;
+            if (table == null)
+                return false;
+
+            return ContainsHammer(item.m_shared.m_name)
+                || ContainsHammer(item.m_dropPrefab != null ? item.m_dropPrefab.name : null)
+                || ContainsHammer(table.name);
+        }
+
+        private static bool ContainsHammer(string name) =>
+            name != null && name.IndexOf("hammer", StringComparison.OrdinalIgnoreCase) >= 0;
+
+        private static bool ShiftHeld() => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+
+        private static bool CtrlHeld() => Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+
+        // Ctrl+scroll: double / halve the grid distance.
+        private static void HandleGridScroll(Player player)
+        {
+            float scroll = Input.mouseScrollDelta.y;
+            if (scroll == 0f || !CtrlHeld())
+                return;
+
+            float size = scroll > 0f ? _gridSize.Value * 2f : _gridSize.Value / 2f;
+            size = Mathf.Clamp(size, GridMinSize, GridMaxSize);
+            if (Mathf.Approximately(size, _gridSize.Value))
+                return;
+
+            _gridSize.Value = size;
+            player.Message(MessageHud.MessageType.TopLeft, $"Grid distance: {size:0.###}m");
         }
 
         private void ToggleRepairMode(Player player)
@@ -197,7 +311,56 @@ namespace NoHammerBuildMenu
             }
         }
 
-        // Prevents Shift+RMB from also opening the build menu while we use it for repair toggle.
+        // Moves the aimed placement point so one of the ghost's snap points (or its origin, if it
+        // has none) lands on the nearest grid vertex. This runs before vanilla positions the ghost
+        // and applies its own piece-to-piece snapping, so snap points of existing pieces within
+        // vanilla's snap range still win over the grid, and validity checks see the final position.
+        [HarmonyPatch(typeof(Player), "PieceRayTest")]
+        private static class Player_PieceRayTest_Patch
+        {
+            [HarmonyPostfix]
+            private static void Postfix(Player __instance, bool __result, ref Vector3 point, ref Vector3 normal, ref Piece piece)
+            {
+                // Only touch `point`: the other out params must keep the values vanilla produced.
+                if (!__result
+                    || __instance != Player.m_localPlayer
+                    || !GridActive(__instance))
+                    return;
+
+                // The game positions the ghost so that its anchor sits exactly at `point`: the
+                // selected snap point in manual mode, otherwise the point on the piece's colliders
+                // closest to the aim point (which varies with orientation and targeted surface).
+                // So whatever the anchor is, snapping `point` itself puts it on the vertex.
+                float size = _gridSize.Value;
+                point.x = Mathf.Round(point.x / size) * size;
+                point.z = Mathf.Round(point.z / size) * size;
+
+                _aimFrame = Time.frameCount;
+                _aimPoint = point;
+                _aimOnPiece = piece != null && normal.y > 0.5f;
+            }
+        }
+
+        // Ctrl+scroll adjusts the grid, so stop vanilla from also using it to rotate the piece.
+        [HarmonyPatch]
+        private static class ZInput_GetMouseScrollWheel_Patch
+        {
+            private static MethodBase TargetMethod() =>
+                AccessTools.Method(typeof(ZInput), "GetMouseScrollWheel");
+
+            private static bool Prepare() => TargetMethod() != null;
+
+            [HarmonyPostfix]
+            private static void Postfix(ref float __result)
+            {
+                Player player = Player.m_localPlayer;
+                if (player != null && CtrlHeld() && GridActive(player))
+                    __result = 0f;
+            }
+        }
+
+        // Prevents Shift+RMB / Ctrl+RMB from also opening the build menu while we use them
+        // for the repair and grid toggles.
         [HarmonyPatch(typeof(Player), "UpdateBuildGuiInput")]
         private static class Player_UpdateBuildGuiInput_Patch
         {
@@ -207,7 +370,7 @@ namespace NoHammerBuildMenu
                 if (__instance == Player.m_localPlayer
                     && _phantomHammer != null
                     && __instance.GetRightItem() == _phantomHammer
-                    && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)))
+                    && (ShiftHeld() || CtrlHeld()))
                     return false;
                 return true;
             }
