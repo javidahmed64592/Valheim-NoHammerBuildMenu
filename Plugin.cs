@@ -6,6 +6,7 @@ using Jotunn.Managers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 
 namespace NoHammerBuildMenu
@@ -21,22 +22,25 @@ namespace NoHammerBuildMenu
         private const string HammerPrefabName = "Hammer";
         private const string ButtonName = "NoHammerBuildMenu_Toggle";
         private const string ButtonQueryName = ButtonName + "!" + PluginGUID;
+
+        // Grid distances are 0.25m doubled/halved, so they always line up with vanilla distances.
         private const float GridMinSize = 0.25f;
         private const float GridMaxSize = 4f;
         private const float GridDefaultSize = 0.5f;
         private static readonly float[] GridSizes = { 0.25f, 0.5f, 1f, 2f, 4f };
 
-        private ConfigEntry<KeyCode> _keybind;
+        private static ItemDrop.ItemData _phantomHammer;
+
         private static ConfigEntry<bool> _gridEnabled;
         private static ConfigEntry<float> _gridSize;
-        private static ConfigEntry<Color> _gridColor;
         private static readonly GridOverlay _gridOverlay = new GridOverlay();
 
-        // Latest aim point from Player.PieceRayTest, used to place the grid overlay.
+        // Latest grid-snapped aim point from Player.PieceRayTest, used to place the grid overlay.
         private static int _aimFrame = -10;
         private static Vector3 _aimPoint;
         private static bool _aimOnPiece;
-        private static ItemDrop.ItemData _phantomHammer;
+
+        private ConfigEntry<KeyCode> _keybind;
         private Harmony _harmony;
         private bool _knownRecipesRefreshed;
         private Piece _lastBuildPiece;
@@ -71,15 +75,9 @@ namespace NoHammerBuildMenu
                     "hold Ctrl and scroll to double or halve it.",
                     new AcceptableValueRange<float>(GridMinSize, GridMaxSize)));
 
-            // Keep the distance on the 0.25 * 2^n steps so doubling/halving stays on vanilla distances.
+            // Reject hand-edited values that aren't one of the doubling/halving steps.
             if (Array.IndexOf(GridSizes, _gridSize.Value) < 0)
                 _gridSize.Value = GridDefaultSize;
-
-            _gridColor = Config.Bind(
-                "Grid",
-                "Line Colour",
-                new Color(1f, 1f, 1f, 0.5f),
-                "Colour and opacity of the grid lines.");
 
             _harmony = new Harmony(PluginGUID);
             _harmony.PatchAll();
@@ -129,28 +127,34 @@ namespace NoHammerBuildMenu
                 ToggleBuildMenu(player);
             }
 
-            if (player.InPlaceMode()
-                && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-                && Input.GetMouseButtonDown(1))
+            if (player.InPlaceMode() && Input.GetMouseButtonDown(1))
             {
-                ToggleRepairMode(player);
+                if (ShiftHeld())
+                    ToggleRepairMode(player);
+                else if (CtrlHeld())
+                    ToggleGrid(player);
             }
 
-            if (player.InPlaceMode() && CtrlHeld() && Input.GetMouseButtonDown(1))
-            {
-                _gridEnabled.Value = !_gridEnabled.Value;
-                player.Message(MessageHud.MessageType.TopLeft, "Build grid " + (_gridEnabled.Value ? "on" : "off"));
-            }
+            UpdateGrid(player);
+        }
 
-            if (GridActive(player))
-            {
-                HandleGridScroll(player);
-                UpdateGridOverlay();
-            }
-            else
+        private static void ToggleGrid(Player player)
+        {
+            _gridEnabled.Value = !_gridEnabled.Value;
+            player.Message(MessageHud.MessageType.TopLeft, "Build grid " + (_gridEnabled.Value ? "on" : "off"));
+        }
+
+        private static void UpdateGrid(Player player)
+        {
+            // The aim point is refreshed every frame by the PieceRayTest patch while placing.
+            if (!GridActive(player) || Time.frameCount - _aimFrame > 2)
             {
                 _gridOverlay.Hide();
+                return;
             }
+
+            HandleGridScroll(player);
+            _gridOverlay.Show(_aimPoint, _gridSize.Value, _aimOnPiece);
         }
 
         private static bool GridActive(Player player)
@@ -193,10 +197,7 @@ namespace NoHammerBuildMenu
         private static void HandleGridScroll(Player player)
         {
             float scroll = Input.mouseScrollDelta.y;
-            if (scroll == 0f)
-                return;
-
-            if (!CtrlHeld())
+            if (scroll == 0f || !CtrlHeld())
                 return;
 
             float size = scroll > 0f ? _gridSize.Value * 2f : _gridSize.Value / 2f;
@@ -206,18 +207,6 @@ namespace NoHammerBuildMenu
 
             _gridSize.Value = size;
             player.Message(MessageHud.MessageType.TopLeft, $"Grid distance: {size:0.###}m");
-        }
-
-        private static void UpdateGridOverlay()
-        {
-            // The aim point is refreshed every frame by the PieceRayTest patch while placing.
-            if (Time.frameCount - _aimFrame > 2)
-            {
-                _gridOverlay.Hide();
-                return;
-            }
-
-            _gridOverlay.Show(_aimPoint, _gridSize.Value, _aimOnPiece, _aimPoint.y, _gridColor.Value);
         }
 
         private void ToggleRepairMode(Player player)
@@ -356,7 +345,7 @@ namespace NoHammerBuildMenu
         [HarmonyPatch]
         private static class ZInput_GetMouseScrollWheel_Patch
         {
-            private static System.Reflection.MethodBase TargetMethod() =>
+            private static MethodBase TargetMethod() =>
                 AccessTools.Method(typeof(ZInput), "GetMouseScrollWheel");
 
             private static bool Prepare() => TargetMethod() != null;

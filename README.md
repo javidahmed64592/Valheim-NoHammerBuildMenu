@@ -10,6 +10,6 @@ While placing a piece, a grid is drawn just above the ground (or on top of a pla
 
 - `Ctrl+Right click` toggles the grid.
 - `Ctrl+Scroll` doubles or halves the distance between vertices: 0.25m, 0.5m, 1m, 2m or 4m (default 0.5m).
-- Enabled state, distance and line colour are in the `Grid` section of the config.
+- Enabled state and distance are in the `Grid` section of the config.
 
 ![NoHammerBuildMenu Example](https://github.com/javidahmed64592/Valheim-NoHammerBuildMenu/raw/main/game_screenshot.png)

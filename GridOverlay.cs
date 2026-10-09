@@ -10,11 +10,13 @@ namespace NoHammerBuildMenu
     // player-built piece (e.g. a floor) the grid is flat at that piece's surface height.
     internal class GridOverlay
     {
-        private const float Radius = 8f;        // half-extent of the drawn grid
-        private const float FadeStart = 5f;     // distance from grid centre where lines start to fade
+        private const float Radius = 8f;          // half-extent of the drawn grid
+        private const float FadeStart = 5f;       // distance from grid centre where lines start to fade
         private const float RebuildDistance = 2f; // aim distance from grid centre that triggers a rebuild
-        private const float Lift = 0.03f;       // height above the surface, avoids z-fighting
+        private const float Lift = 0.03f;         // height above the surface, avoids z-fighting
         private const float SegmentLength = 0.5f; // line subdivision so lines can follow terrain
+
+        private static readonly Color LineColor = new Color(1f, 1f, 1f, 0.5f);
 
         private GameObject _object;
         private Mesh _mesh;
@@ -25,9 +27,8 @@ namespace NoHammerBuildMenu
         private Vector3 _builtCenter;
         private bool _builtFlat;
         private float _builtFlatY;
-        private Color _builtColor;
 
-        public void Show(Vector3 aim, float size, bool flat, float flatY, Color color)
+        public void Show(Vector3 aim, float size, bool flat)
         {
             if (!EnsureObject())
                 return;
@@ -41,12 +42,11 @@ namespace NoHammerBuildMenu
             bool stale = !_hasMesh
                 || !Mathf.Approximately(size, _builtSize)
                 || flat != _builtFlat
-                || (flat && Mathf.Abs(flatY - _builtFlatY) > 0.01f)
-                || color != _builtColor
+                || (flat && Mathf.Abs(aim.y - _builtFlatY) > 0.01f)
                 || offset.magnitude > RebuildDistance;
 
             if (stale)
-                Rebuild(center, size, flat, flatY, color);
+                Rebuild(center, size, flat, aim.y);
 
             _object.SetActive(true);
         }
@@ -100,7 +100,7 @@ namespace NoHammerBuildMenu
             return true;
         }
 
-        private void Rebuild(Vector3 center, float size, bool flat, float flatY, Color color)
+        private void Rebuild(Vector3 center, float size, bool flat, float flatY)
         {
             int half = Mathf.FloorToInt(Radius / size);
             int segments = Mathf.CeilToInt(2f * Radius / SegmentLength);
@@ -122,12 +122,12 @@ namespace NoHammerBuildMenu
                         float x = center.x + (axis == 0 ? line : t);
                         float z = center.z + (axis == 0 ? t : line);
 
-                        float dist = Mathf.Sqrt((axis == 0 ? line * line + t * t : t * t + line * line));
+                        float dist = Mathf.Sqrt(line * line + t * t);
                         float fade = Mathf.Clamp01(1f - (dist - FadeStart) / (Radius - FadeStart));
 
                         float y = flat ? flatY : GroundHeight(x, z);
                         vertices.Add(new Vector3(x, y + Lift, z));
-                        colors.Add(new Color(color.r, color.g, color.b, color.a * fade));
+                        colors.Add(new Color(LineColor.r, LineColor.g, LineColor.b, LineColor.a * fade));
 
                         if (s > 0)
                         {
@@ -149,7 +149,6 @@ namespace NoHammerBuildMenu
             _builtCenter = center;
             _builtFlat = flat;
             _builtFlatY = flatY;
-            _builtColor = color;
         }
 
         private static float GroundHeight(float x, float z)
