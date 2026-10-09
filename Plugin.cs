@@ -21,12 +21,10 @@ namespace NoHammerBuildMenu
         private const string HammerPrefabName = "Hammer";
         private const string ButtonName = "NoHammerBuildMenu_Toggle";
         private const string ButtonQueryName = ButtonName + "!" + PluginGUID;
-        private const string GridButtonName = "NoHammerBuildMenu_ToggleGrid";
-        private const string GridButtonQueryName = GridButtonName + "!" + PluginGUID;
-
-        private const float GridMinSize = 0.1f;
-        private const float GridMaxSize = 8f;
-        private const float GridFineStep = 0.05f;
+        private const float GridMinSize = 0.25f;
+        private const float GridMaxSize = 4f;
+        private const float GridDefaultSize = 0.5f;
+        private static readonly float[] GridSizes = { 0.25f, 0.5f, 1f, 2f, 4f };
 
         private ConfigEntry<KeyCode> _keybind;
         private static ConfigEntry<bool> _gridEnabled;
@@ -58,18 +56,6 @@ namespace NoHammerBuildMenu
                 Config = _keybind
             });
 
-            ConfigEntry<KeyCode> gridKeybind = Config.Bind(
-                "Keybinds",
-                "Toggle Build Grid",
-                KeyCode.G,
-                "Toggles the world build grid (overlay and snap points) while placing pieces.");
-
-            InputManager.Instance.AddButton(PluginGUID, new ButtonConfig
-            {
-                Name = GridButtonName,
-                Config = gridKeybind
-            });
-
             _gridEnabled = Config.Bind(
                 "Grid",
                 "Enabled",
@@ -79,11 +65,15 @@ namespace NoHammerBuildMenu
             _gridSize = Config.Bind(
                 "Grid",
                 "Snap Distance",
-                0.5f,
+                GridDefaultSize,
                 new ConfigDescription(
-                    "Distance in metres between grid vertices. While building, hold Shift and scroll " +
-                    "to change it by 0.05m, or hold Ctrl and scroll to double/halve it.",
+                    "Distance in metres between grid vertices (0.25, 0.5, 1, 2 or 4). While building, " +
+                    "hold Ctrl and scroll to double or halve it.",
                     new AcceptableValueRange<float>(GridMinSize, GridMaxSize)));
+
+            // Keep the distance on the 0.25 * 2^n steps so doubling/halving stays on vanilla distances.
+            if (Array.IndexOf(GridSizes, _gridSize.Value) < 0)
+                _gridSize.Value = GridDefaultSize;
 
             _gridColor = Config.Bind(
                 "Grid",
@@ -146,7 +136,7 @@ namespace NoHammerBuildMenu
                 ToggleRepairMode(player);
             }
 
-            if (ZInput.GetButtonDown(GridButtonQueryName) && player.InPlaceMode())
+            if (player.InPlaceMode() && CtrlHeld() && Input.GetMouseButtonDown(1))
             {
                 _gridEnabled.Value = !_gridEnabled.Value;
                 player.Message(MessageHud.MessageType.TopLeft, "Build grid " + (_gridEnabled.Value ? "on" : "off"));
@@ -175,22 +165,18 @@ namespace NoHammerBuildMenu
 
         private static bool CtrlHeld() => Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
 
-        // Shift+scroll: +/- 0.05m. Ctrl+scroll: double / halve.
+        // Ctrl+scroll: double / halve the grid distance.
         private static void HandleGridScroll(Player player)
         {
             float scroll = Input.mouseScrollDelta.y;
             if (scroll == 0f)
                 return;
 
-            float size = _gridSize.Value;
-            if (CtrlHeld())
-                size = scroll > 0f ? size * 2f : size / 2f;
-            else if (ShiftHeld())
-                size += Math.Sign(scroll) * GridFineStep;
-            else
+            if (!CtrlHeld())
                 return;
 
-            size = (float)Math.Round(Mathf.Clamp(size, GridMinSize, GridMaxSize), 4);
+            float size = scroll > 0f ? _gridSize.Value * 2f : _gridSize.Value / 2f;
+            size = Mathf.Clamp(size, GridMinSize, GridMaxSize);
             if (Mathf.Approximately(size, _gridSize.Value))
                 return;
 
@@ -366,7 +352,7 @@ namespace NoHammerBuildMenu
             }
         }
 
-        // Shift/Ctrl+scroll adjusts the grid, so stop vanilla from also using it to rotate the piece.
+        // Ctrl+scroll adjusts the grid, so stop vanilla from also using it to rotate the piece.
         [HarmonyPatch]
         private static class ZInput_GetMouseScrollWheel_Patch
         {
@@ -379,12 +365,13 @@ namespace NoHammerBuildMenu
             private static void Postfix(ref float __result)
             {
                 Player player = Player.m_localPlayer;
-                if (player != null && (ShiftHeld() || CtrlHeld()) && GridActive(player))
+                if (player != null && CtrlHeld() && GridActive(player))
                     __result = 0f;
             }
         }
 
-        // Prevents Shift+RMB from also opening the build menu while we use it for repair toggle.
+        // Prevents Shift+RMB / Ctrl+RMB from also opening the build menu while we use them
+        // for the repair and grid toggles.
         [HarmonyPatch(typeof(Player), "UpdateBuildGuiInput")]
         private static class Player_UpdateBuildGuiInput_Patch
         {
@@ -394,7 +381,7 @@ namespace NoHammerBuildMenu
                 if (__instance == Player.m_localPlayer
                     && _phantomHammer != null
                     && __instance.GetRightItem() == _phantomHammer
-                    && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)))
+                    && (ShiftHeld() || CtrlHeld()))
                     return false;
                 return true;
             }
