@@ -375,16 +375,21 @@ namespace NoHammerBuildMenu
                 var snapPoints = new List<Transform>();
                 ghost.GetComponent<Piece>()?.GetSnapPoints(snapPoints);
 
-                // With a specific snap point selected, that one (and only that one) goes on the vertex.
+                // With a specific snap point selected, the game places that snap point at the aim
+                // point (rather than the piece's origin), so the aim point itself goes on the vertex.
+                var offsets = new List<Vector3>();
                 int manual = ManualSnapIndex(__instance);
                 if (manual >= 0 && manual < snapPoints.Count)
-                    snapPoints = new List<Transform> { snapPoints[manual] };
-
-                var offsets = new List<Vector3>();
-                foreach (Transform t in snapPoints)
-                    offsets.Add(t.position - ghost.transform.position);
-                if (offsets.Count == 0)
+                {
                     offsets.Add(Vector3.zero);
+                }
+                else
+                {
+                    foreach (Transform t in snapPoints)
+                        offsets.Add(t.position - ghost.transform.position);
+                    if (offsets.Count == 0)
+                        offsets.Add(Vector3.zero);
+                }
 
                 Vector3 bestDelta = Vector3.zero;
                 float bestDist = float.MaxValue;
