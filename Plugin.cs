@@ -385,8 +385,36 @@ namespace NoHammerBuildMenu
                 }
                 else
                 {
+                    // Auto: pieces connect at their bottom, so only the lowest snap points are
+                    // candidates (otherwise a raised end of a beam or roof could take the vertex).
+                    // If the piece's origin is itself one of them (e.g. a roof's bottom corner),
+                    // that anchor wins.
+                    const float HeightTolerance = 0.05f;
+                    Vector3 origin = ghost.transform.position;
+                    float minY = float.MaxValue;
                     foreach (Transform t in snapPoints)
-                        offsets.Add(t.position - ghost.transform.position);
+                        minY = Mathf.Min(minY, t.position.y);
+
+                    bool anchored = false;
+                    foreach (Transform t in snapPoints)
+                    {
+                        if (t.position.y > minY + HeightTolerance)
+                            continue;
+                        Vector3 offset = t.position - origin;
+                        if (new Vector2(offset.x, offset.z).magnitude < HeightTolerance)
+                            anchored = true;
+                    }
+
+                    foreach (Transform t in snapPoints)
+                    {
+                        if (t.position.y > minY + HeightTolerance)
+                            continue;
+                        Vector3 offset = t.position - origin;
+                        if (anchored && new Vector2(offset.x, offset.z).magnitude >= HeightTolerance)
+                            continue;
+                        offsets.Add(offset);
+                    }
+
                     if (offsets.Count == 0)
                         offsets.Add(Vector3.zero);
                 }
