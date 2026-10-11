@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- Hold Alt and scroll to zoom the camera in and out while a hammer is equipped and placing a piece, so you no longer need to unequip the hammer to get a closer look. Alt+scroll does not rotate the piece.
+
 ## 0.2.0
 
 - Added a world build grid: a visible grid overlay near your aim point (following the terrain, or flat on top of player-built floors) with snap points at every vertex. Pieces snap to grid vertices like they do to other pieces' snap points, and snapping to other pieces still takes priority.
