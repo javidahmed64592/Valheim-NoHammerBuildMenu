@@ -17,7 +17,7 @@ namespace NoHammerBuildMenu
     {
         public const string PluginGUID = "javidahmed64592.nohammerbuildmenu";
         public const string PluginName = "No Hammer Build Menu";
-        public const string PluginVersion = "0.2.0";
+        public const string PluginVersion = "0.3.0";
 
         private const string HammerPrefabName = "Hammer";
         private const string ButtonName = "NoHammerBuildMenu_Toggle";
@@ -193,6 +193,12 @@ namespace NoHammerBuildMenu
 
         private static bool CtrlHeld() => Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
 
+        private static bool AltHeld() => Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
+
+        // Alt+scroll zooms the camera while placing with a hammer.
+        private static bool AltZoomActive(Player player) =>
+            player == Player.m_localPlayer && AltHeld() && player.InPlaceMode() && IsHammerEquipped(player);
+
         // Ctrl+scroll: double / halve the grid distance.
         private static void HandleGridScroll(Player player)
         {
@@ -356,6 +362,45 @@ namespace NoHammerBuildMenu
                 Player player = Player.m_localPlayer;
                 if (player != null && CtrlHeld() && GridActive(player))
                     __result = 0f;
+            }
+        }
+
+        // Vanilla only zooms the camera while placing if the piece can't rotate (it uses scroll to
+        // rotate otherwise). Report "can't rotate" while Alt is held so the camera zooms instead.
+        [HarmonyPatch(typeof(Player), nameof(Player.CanRotatePiece))]
+        private static class Player_CanRotatePiece_Patch
+        {
+            [HarmonyPostfix]
+            private static void Postfix(Player __instance, ref bool __result)
+            {
+                if (__result && AltZoomActive(__instance))
+                    __result = false;
+            }
+        }
+
+        // Stops Alt+scroll from also rotating the piece: UpdatePlacement accumulates scroll into
+        // the rotation, so restore the rotation state it had before the call.
+        [HarmonyPatch(typeof(Player), "UpdatePlacement")]
+        private static class Player_UpdatePlacement_Patch
+        {
+            private static readonly FieldInfo ScrollField = AccessTools.Field(typeof(Player), "m_scrollCurrAmount");
+            private static readonly FieldInfo RotationField = AccessTools.Field(typeof(Player), "m_placeRotation");
+
+            [HarmonyPrefix]
+            private static void Prefix(Player __instance, out (float scroll, int rotation)? __state)
+            {
+                __state = null;
+                if (ScrollField != null && RotationField != null && AltZoomActive(__instance))
+                    __state = ((float)ScrollField.GetValue(__instance), (int)RotationField.GetValue(__instance));
+            }
+
+            [HarmonyPostfix]
+            private static void Postfix(Player __instance, (float scroll, int rotation)? __state)
+            {
+                if (__state == null)
+                    return;
+                ScrollField.SetValue(__instance, __state.Value.scroll);
+                RotationField.SetValue(__instance, __state.Value.rotation);
             }
         }
 

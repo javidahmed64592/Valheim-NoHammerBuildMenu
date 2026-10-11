@@ -4,6 +4,8 @@ Press a configurable key (default `B`) to open Valheim's build menu without a ha
 
 You can also press `Shift+Mouse2` (right-click) to toggle between repair mode and your last selected piece while building.
 
+You can hold `Alt` and scroll to zoom the camera in and out while building, without unequipping the hammer.
+
 ## Build grid
 
 While placing a piece, a grid is drawn just above the ground (or on top of a player-built floor) and pieces snap to its vertices, in the same way they snap to the snap points of other pieces. Snapping to existing pieces takes priority over the grid. Grid snapping is horizontal only; height comes from the surface you aim at.
