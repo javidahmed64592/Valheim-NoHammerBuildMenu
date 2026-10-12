@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Highlight world chunk borders in a different colour.
+- Make the build grid thicker and more visible.
+
 ## 0.3.0
 
 - Hold Alt and scroll to zoom the camera in and out while a hammer is equipped and placing a piece, so you no longer need to unequip the hammer to get a closer look. Alt+scroll does not rotate the piece.
