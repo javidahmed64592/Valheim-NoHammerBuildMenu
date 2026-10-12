@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.4.1
+## 0.5.0
 
-- Decreased the brightness of the build grid lines.
+- Decreased the default brightness of the build grid lines.
+- Made the build grid appearance configurable in the new `Grid Appearance` config section: radius, fade start, rebuild distance, lift, segment length, line widths, and line colours.
 
 ## 0.4.0
 
