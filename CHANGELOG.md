@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- Decreased the brightness of the build grid lines.
+
 ## 0.4.0
 
 - Highlight world chunk borders in a different colour.

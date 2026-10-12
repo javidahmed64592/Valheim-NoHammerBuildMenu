@@ -20,8 +20,8 @@ namespace NoHammerBuildMenu
         private const float ChunkLineWidth = 0.2f;  // width of the thick lines drawn on world chunk (zone) borders
         private const float ChunkLineLift = 0.13f;  // slightly above the grid lines so they draw on top
 
-        private static readonly Color LineColor = new Color(1f, 1f, 1f, 0.7f);
-        private static readonly Color ChunkLineColor = new Color(1f, 0.1f, 0.1f, 0.85f);
+        private static readonly Color LineColor = new Color(1f, 1f, 1f, 0.5f);
+        private static readonly Color ChunkLineColor = new Color(1f, 0.1f, 0.1f, 0.75f);
 
         private GameObject _object;
         private Mesh _mesh;
