@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 - Highlight world chunk borders in a different colour.
 - Make the build grid thicker and more visible.
