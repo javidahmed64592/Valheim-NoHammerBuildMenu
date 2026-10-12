@@ -4,6 +4,7 @@
 
 - Highlight world chunk borders in a different colour.
 - Make the build grid thicker and more visible.
+- Shift+right-click (repair toggle) and Ctrl+right-click (grid toggle) no longer also open the build menu when using the vanilla hammer or other hammers, not just the phantom hammer.
 
 ## 0.3.0
 
