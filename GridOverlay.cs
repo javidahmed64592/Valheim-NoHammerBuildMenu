@@ -1,3 +1,4 @@
+using BepInEx.Configuration;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -10,18 +11,62 @@ namespace NoHammerBuildMenu
     // player-built piece (e.g. a floor) the grid is flat at that piece's surface height.
     internal class GridOverlay
     {
-        private const float Radius = 8f;          // half-extent of the drawn grid
-        private const float FadeStart = 5f;       // distance from grid centre where lines start to fade
-        private const float RebuildDistance = 2f; // aim distance from grid centre that triggers a rebuild
-        private const float Lift = 0.12f;         // height above the surface, keeps lines clear of grass and z-fighting
-        private const float SegmentLength = 0.5f; // line subdivision so lines can follow terrain
+        private static ConfigEntry<float> _radius;          // half-extent of the drawn grid
+        private static ConfigEntry<float> _fadeStart;       // distance from grid centre where lines start to fade
+        private static ConfigEntry<float> _rebuildDistance; // aim distance from grid centre that triggers a rebuild
+        private static ConfigEntry<float> _lift;            // height above the surface, keeps lines clear of grass and z-fighting
+        private static ConfigEntry<float> _segmentLength;   // line subdivision so lines can follow terrain
+        private static ConfigEntry<float> _gridLineWidth;   // width of the regular grid lines
+        private static ConfigEntry<float> _chunkLineWidth;  // width of the thick lines drawn on world chunk (zone) borders
+        private static ConfigEntry<float> _chunkLineLift;   // slightly above the grid lines so they draw on top
+        private static ConfigEntry<Color> _lineColor;
+        private static ConfigEntry<Color> _chunkLineColor;
 
-        private const float GridLineWidth = 0.06f;   // width of the regular grid lines
-        private const float ChunkLineWidth = 0.2f;  // width of the thick lines drawn on world chunk (zone) borders
-        private const float ChunkLineLift = 0.13f;  // slightly above the grid lines so they draw on top
+        private static float Radius => _radius.Value;
+        // Fade must start inside the radius, otherwise the fade division is by zero or negative.
+        private static float FadeStart => Mathf.Min(_fadeStart.Value, Radius - 0.01f);
+        private static float RebuildDistance => _rebuildDistance.Value;
+        private static float Lift => _lift.Value;
+        private static float SegmentLength => _segmentLength.Value;
+        private static float GridLineWidth => _gridLineWidth.Value;
+        private static float ChunkLineWidth => _chunkLineWidth.Value;
+        private static float ChunkLineLift => _chunkLineLift.Value;
+        private static Color LineColor => _lineColor.Value;
+        private static Color ChunkLineColor => _chunkLineColor.Value;
 
-        private static readonly Color LineColor = new Color(1f, 1f, 1f, 0.7f);
-        private static readonly Color ChunkLineColor = new Color(1f, 0.1f, 0.1f, 0.85f);
+        public static void BindConfig(ConfigFile config)
+        {
+            const string section = "Grid Appearance";
+
+            _radius = config.Bind(section, "Radius", 8f,
+                new ConfigDescription("Half-extent in metres of the drawn grid around the aim point.",
+                    new AcceptableValueRange<float>(2f, 32f)));
+            _fadeStart = config.Bind(section, "Fade Start", 4f,
+                new ConfigDescription("Distance in metres from the grid centre where lines start to fade out (kept below Radius).",
+                    new AcceptableValueRange<float>(0f, 32f)));
+            _rebuildDistance = config.Bind(section, "Rebuild Distance", 2f,
+                new ConfigDescription("How far in metres the aim point can move from the grid centre before the grid is redrawn.",
+                    new AcceptableValueRange<float>(0.25f, 16f)));
+            _lift = config.Bind(section, "Lift", 0.12f,
+                new ConfigDescription("Height in metres above the surface, keeps lines clear of grass and z-fighting.",
+                    new AcceptableValueRange<float>(0f, 1f)));
+            _segmentLength = config.Bind(section, "Segment Length", 0.5f,
+                new ConfigDescription("Line subdivision in metres so lines can follow terrain. Smaller is smoother but heavier.",
+                    new AcceptableValueRange<float>(0.1f, 4f)));
+            _gridLineWidth = config.Bind(section, "Line Width", 0.06f,
+                new ConfigDescription("Width in metres of the regular grid lines.",
+                    new AcceptableValueRange<float>(0.01f, 1f)));
+            _chunkLineWidth = config.Bind(section, "Chunk Line Width", 0.2f,
+                new ConfigDescription("Width in metres of the thick lines drawn on world chunk (zone) borders.",
+                    new AcceptableValueRange<float>(0.01f, 2f)));
+            _chunkLineLift = config.Bind(section, "Chunk Line Lift", 0.13f,
+                new ConfigDescription("Height in metres above the surface of chunk border lines; keep slightly above Lift so they draw on top.",
+                    new AcceptableValueRange<float>(0f, 1f)));
+            _lineColor = config.Bind(section, "Line Color", new Color(1f, 1f, 1f, 0.3f),
+                "Colour (including alpha) of the regular grid lines.");
+            _chunkLineColor = config.Bind(section, "Chunk Line Color", new Color(1f, 0.1f, 0.1f, 0.75f),
+                "Colour (including alpha) of the world chunk border lines.");
+        }
 
         private GameObject _object;
         private Mesh _mesh;

@@ -17,7 +17,7 @@ namespace NoHammerBuildMenu
     {
         public const string PluginGUID = "javidahmed64592.nohammerbuildmenu";
         public const string PluginName = "No Hammer Build Menu";
-        public const string PluginVersion = "0.4.0";
+        public const string PluginVersion = "0.5.0";
 
         private const string HammerPrefabName = "Hammer";
         private const string ButtonName = "NoHammerBuildMenu_Toggle";
@@ -74,6 +74,8 @@ namespace NoHammerBuildMenu
                     "Distance in metres between grid vertices (0.25, 0.5, 1, 2 or 4). While building, " +
                     "hold Ctrl and scroll to double or halve it.",
                     new AcceptableValueRange<float>(GridMinSize, GridMaxSize)));
+
+            GridOverlay.BindConfig(Config);
 
             // Reject hand-edited values that aren't one of the doubling/halving steps.
             if (Array.IndexOf(GridSizes, _gridSize.Value) < 0)

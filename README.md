@@ -14,5 +14,6 @@ While placing a piece, a grid is drawn just above the ground (or on top of a pla
 - `Ctrl+Mouse2` (right-click) toggles the grid.
 - `Ctrl+Scroll` doubles or halves the distance between vertices: 0.25m, 0.5m, 1m, 2m or 4m (default 0.5m).
 - The world's chunk borders are highlighted in a different colour.
+- The grid's radius, fade, line widths, line colours and more can be changed in the `Grid Appearance` section of the config file.
 
 ![NoHammerBuildMenu Example](https://github.com/javidahmed64592/Valheim-NoHammerBuildMenu/raw/main/game_screenshot.png)
