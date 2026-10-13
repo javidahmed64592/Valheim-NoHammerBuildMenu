@@ -41,7 +41,7 @@ namespace NoHammerBuildMenu
             _radius = config.Bind(section, "Radius", 8f,
                 new ConfigDescription("Half-extent in metres of the drawn grid around the aim point.",
                     new AcceptableValueRange<float>(2f, 32f)));
-            _fadeStart = config.Bind(section, "Fade Start", 5f,
+            _fadeStart = config.Bind(section, "Fade Start", 4f,
                 new ConfigDescription("Distance in metres from the grid centre where lines start to fade out (kept below Radius).",
                     new AcceptableValueRange<float>(0f, 32f)));
             _rebuildDistance = config.Bind(section, "Rebuild Distance", 2f,
@@ -62,7 +62,7 @@ namespace NoHammerBuildMenu
             _chunkLineLift = config.Bind(section, "Chunk Line Lift", 0.13f,
                 new ConfigDescription("Height in metres above the surface of chunk border lines; keep slightly above Lift so they draw on top.",
                     new AcceptableValueRange<float>(0f, 1f)));
-            _lineColor = config.Bind(section, "Line Color", new Color(1f, 1f, 1f, 0.5f),
+            _lineColor = config.Bind(section, "Line Color", new Color(1f, 1f, 1f, 0.3f),
                 "Colour (including alpha) of the regular grid lines.");
             _chunkLineColor = config.Bind(section, "Chunk Line Color", new Color(1f, 0.1f, 0.1f, 0.75f),
                 "Colour (including alpha) of the world chunk border lines.");
