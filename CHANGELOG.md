@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- The build grid now snaps and draws on whichever face of a piece you are looking at: the top (as before), the underside (e.g. ceilings), and vertical walls, so pieces can be aligned along all axes.
+- Snapping only moves the aim point within the targeted surface, so pieces never snap to empty air. Diagonal walls only snap in height and show no grid.
+- Terrain and non-piece objects keep snapping horizontally as before.
+
 ## 0.5.0
 
 - Decreased the default brightness of the build grid lines.

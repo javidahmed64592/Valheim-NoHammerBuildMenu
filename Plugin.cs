@@ -17,7 +17,7 @@ namespace NoHammerBuildMenu
     {
         public const string PluginGUID = "javidahmed64592.nohammerbuildmenu";
         public const string PluginName = "No Hammer Build Menu";
-        public const string PluginVersion = "0.5.0";
+        public const string PluginVersion = "0.6.0";
 
         private const string HammerPrefabName = "Hammer";
         private const string ButtonName = "NoHammerBuildMenu_Toggle";
@@ -31,6 +31,9 @@ namespace NoHammerBuildMenu
 
         private static ItemDrop.ItemData _phantomHammer;
 
+        // Minimum normal component for a vertical face to count as axis-aligned (about 25 degrees).
+        private const float AxisAlignedWall = 0.9f;
+
         private static ConfigEntry<bool> _gridEnabled;
         private static ConfigEntry<float> _gridSize;
         private static readonly GridOverlay _gridOverlay = new GridOverlay();
@@ -38,7 +41,8 @@ namespace NoHammerBuildMenu
         // Latest grid-snapped aim point from Player.PieceRayTest, used to place the grid overlay.
         private static int _aimFrame = -10;
         private static Vector3 _aimPoint;
-        private static bool _aimOnPiece;
+        private static GridPlane _aimPlane;
+        private static float _aimSign;
 
         private ConfigEntry<KeyCode> _keybind;
         private Harmony _harmony;
@@ -149,14 +153,14 @@ namespace NoHammerBuildMenu
         private static void UpdateGrid(Player player)
         {
             // The aim point is refreshed every frame by the PieceRayTest patch while placing.
-            if (!GridActive(player) || Time.frameCount - _aimFrame > 2)
+            if (!GridActive(player) || Time.frameCount - _aimFrame > 2 || _aimPlane == GridPlane.None)
             {
                 _gridOverlay.Hide();
                 return;
             }
 
             HandleGridScroll(player);
-            _gridOverlay.Show(_aimPoint, _gridSize.Value, _aimOnPiece);
+            _gridOverlay.Show(_aimPoint, _gridSize.Value, _aimPlane, _aimSign);
         }
 
         private static bool GridActive(Player player)
@@ -190,6 +194,8 @@ namespace NoHammerBuildMenu
 
         private static bool ContainsHammer(string name) =>
             name != null && name.IndexOf("hammer", StringComparison.OrdinalIgnoreCase) >= 0;
+
+        private static float SnapTo(float value, float size) => Mathf.Round(value / size) * size;
 
         private static bool ShiftHeld() => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
@@ -339,13 +345,54 @@ namespace NoHammerBuildMenu
                 // selected snap point in manual mode, otherwise the point on the piece's colliders
                 // closest to the aim point (which varies with orientation and targeted surface).
                 // So whatever the anchor is, snapping `point` itself puts it on the vertex.
+                //
+                // Only the coordinates lying in the targeted surface's plane are snapped. The one
+                // along its normal stays where the aim ray hit, so the point never leaves the surface
+                // and nothing snaps to empty air. Terrain and other non-piece surfaces keep snapping
+                // horizontally only.
                 float size = _gridSize.Value;
-                point.x = Mathf.Round(point.x / size) * size;
-                point.z = Mathf.Round(point.z / size) * size;
+                GridPlane plane = GridPlane.Terrain;
+                float sign = 1f;
+
+                if (piece == null)
+                {
+                    point.x = SnapTo(point.x, size);
+                    point.z = SnapTo(point.z, size);
+                }
+                else if (Mathf.Abs(normal.y) > 0.5f)
+                {
+                    // Top or underside of a piece.
+                    point.x = SnapTo(point.x, size);
+                    point.z = SnapTo(point.z, size);
+                    plane = normal.y > 0f ? GridPlane.Top : GridPlane.Bottom;
+                    sign = Mathf.Sign(normal.y);
+                }
+                else if (Mathf.Abs(normal.x) > AxisAlignedWall)
+                {
+                    point.y = SnapTo(point.y, size);
+                    point.z = SnapTo(point.z, size);
+                    plane = GridPlane.WallX;
+                    sign = Mathf.Sign(normal.x);
+                }
+                else if (Mathf.Abs(normal.z) > AxisAlignedWall)
+                {
+                    point.x = SnapTo(point.x, size);
+                    point.y = SnapTo(point.y, size);
+                    plane = GridPlane.WallZ;
+                    sign = Mathf.Sign(normal.z);
+                }
+                else
+                {
+                    // Diagonal wall: a horizontal snap would slide the point off the surface, so
+                    // snap the height only and skip the overlay.
+                    point.y = SnapTo(point.y, size);
+                    plane = GridPlane.None;
+                }
 
                 _aimFrame = Time.frameCount;
                 _aimPoint = point;
-                _aimOnPiece = piece != null && normal.y > 0.5f;
+                _aimPlane = plane;
+                _aimSign = sign;
             }
         }
 
