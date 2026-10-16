@@ -9,7 +9,8 @@ This mod adds several improvements to the vanilla base hammer:
 
 ## Build grid
 
-While placing a piece, a grid is drawn on the surface you are aiming at and pieces snap to its vertices, in the same way they snap to the snap points of other pieces. Snapping to existing pieces takes priority over the grid.
+While placing a piece, a grid is drawn on the surface you are aiming at and pieces snap to its vertices, in the same way they snap to the snap points of other pieces.
+Snapping to existing pieces takes priority over the grid.
 
 - On terrain, the grid follows the ground and pieces snap horizontally, with height coming from the ground.
 - On top of a player-built piece (e.g. a floor), the grid is flat on its top surface.
