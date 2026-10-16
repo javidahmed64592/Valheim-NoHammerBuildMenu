@@ -5,10 +5,15 @@ using UnityEngine.Rendering;
 
 namespace NoHammerBuildMenu
 {
+    // Which surface the grid is drawn on. Terrain follows the ground height; the others are flat
+    // planes whose normal points along world Y (Top / Bottom) or X / Z (walls).
+    internal enum GridPlane { None, Terrain, Top, Bottom, WallX, WallZ }
+
     // Draws a square grid of lines around the build aim point. The grid is anchored to
     // world coordinates (vertices at multiples of the grid size), so it stays still while the
     // player moves their aim. On terrain the lines follow the ground height; on top of a
-    // player-built piece (e.g. a floor) the grid is flat at that piece's surface height.
+    // player-built piece (e.g. a floor) the grid is flat at that piece's surface height. It can also
+    // be drawn on the underside of a piece or on its vertical faces.
     internal class GridOverlay
     {
         private static ConfigEntry<float> _radius;          // half-extent of the drawn grid
@@ -74,29 +79,31 @@ namespace NoHammerBuildMenu
         private bool _warned;
 
         private float _builtSize;
-        private Vector3 _builtCenter;
-        private bool _builtFlat;
-        private float _builtFlatY;
+        private Vector2 _builtCenter;   // grid centre in plane coordinates (a, b)
+        private GridPlane _builtPlane;
+        private float _builtSign;
+        private float _builtNormalValue;
 
-        public void Show(Vector3 aim, float size, bool flat)
+        // `aim` is the grid-snapped aim point. `sign` is the direction the surface faces along its
+        // normal axis, so the grid is lifted off the surface towards the viewer.
+        public void Show(Vector3 aim, float size, GridPlane plane, float sign)
         {
             if (!EnsureObject())
                 return;
 
-            Vector3 center = new Vector3(
-                Mathf.Round(aim.x / size) * size,
-                0f,
-                Mathf.Round(aim.z / size) * size);
+            Vector2 ab = ToPlane(plane, aim);
+            float normalValue = NormalCoord(plane, aim);
+            Vector2 center = new Vector2(Mathf.Round(ab.x / size) * size, Mathf.Round(ab.y / size) * size);
 
-            Vector2 offset = new Vector2(aim.x - _builtCenter.x, aim.z - _builtCenter.z);
             bool stale = !_hasMesh
                 || !Mathf.Approximately(size, _builtSize)
-                || flat != _builtFlat
-                || (flat && Mathf.Abs(aim.y - _builtFlatY) > 0.01f)
-                || offset.magnitude > RebuildDistance;
+                || plane != _builtPlane
+                || sign != _builtSign
+                || (plane != GridPlane.Terrain && Mathf.Abs(normalValue - _builtNormalValue) > 0.01f)
+                || (ab - _builtCenter).magnitude > RebuildDistance;
 
             if (stale)
-                Rebuild(center, size, flat, aim.y);
+                Rebuild(center, size, plane, sign, normalValue);
 
             _object.SetActive(true);
         }
@@ -152,7 +159,41 @@ namespace NoHammerBuildMenu
             return true;
         }
 
-        private void Rebuild(Vector3 center, float size, bool flat, float flatY)
+        // Plane coordinates: (a, b) are the two in-plane axes, n is the axis along the normal.
+        //   Terrain / Top / Bottom: a = x, b = z, n = y
+        //   WallX:                  a = z, b = y, n = x
+        //   WallZ:                  a = x, b = y, n = z
+        private static Vector2 ToPlane(GridPlane plane, Vector3 p)
+        {
+            switch (plane)
+            {
+                case GridPlane.WallX: return new Vector2(p.z, p.y);
+                case GridPlane.WallZ: return new Vector2(p.x, p.y);
+                default: return new Vector2(p.x, p.z);
+            }
+        }
+
+        private static float NormalCoord(GridPlane plane, Vector3 p)
+        {
+            switch (plane)
+            {
+                case GridPlane.WallX: return p.x;
+                case GridPlane.WallZ: return p.z;
+                default: return p.y;
+            }
+        }
+
+        private static Vector3 ToWorld(GridPlane plane, float a, float b, float n)
+        {
+            switch (plane)
+            {
+                case GridPlane.WallX: return new Vector3(n, b, a);
+                case GridPlane.WallZ: return new Vector3(a, b, n);
+                default: return new Vector3(a, n, b);
+            }
+        }
+
+        private void Rebuild(Vector2 center, float size, GridPlane plane, float sign, float normalValue)
         {
             int half = Mathf.FloorToInt(Radius / size);
             int segments = Mathf.CeilToInt(2f * Radius / SegmentLength);
@@ -166,11 +207,11 @@ namespace NoHammerBuildMenu
             for (int i = -half; i <= half; i++)
             {
                 float line = i * size;
-                AddRibbon(0, center.x + line, center.z, line, GridLineWidth, Lift, LineColor, flat, flatY, segments, step, vertices, colors, indices);
-                AddRibbon(1, center.z + line, center.x, line, GridLineWidth, Lift, LineColor, flat, flatY, segments, step, vertices, colors, indices);
+                AddRibbon(plane, sign, normalValue, 0, center.x + line, center.y, line, GridLineWidth, Lift, LineColor, segments, step, vertices, colors, indices);
+                AddRibbon(plane, sign, normalValue, 1, center.y + line, center.x, line, GridLineWidth, Lift, LineColor, segments, step, vertices, colors, indices);
             }
 
-            AddChunkLines(center, flat, flatY, segments, step, vertices, colors, chunkIndices);
+            AddChunkLines(plane, sign, normalValue, center, segments, step, vertices, colors, chunkIndices);
 
             _mesh.Clear();
             _mesh.subMeshCount = 2;
@@ -183,22 +224,27 @@ namespace NoHammerBuildMenu
             _hasMesh = true;
             _builtSize = size;
             _builtCenter = center;
-            _builtFlat = flat;
-            _builtFlatY = flatY;
+            _builtPlane = plane;
+            _builtSign = sign;
+            _builtNormalValue = normalValue;
         }
 
         // Draws a thick ribbon along every world chunk (zone) border within the grid's radius.
-        // Zone borders sit half a zone size from the zone centres, i.e. at 32 + 64k.
-        private static void AddChunkLines(Vector3 center, bool flat, float flatY, int segments, float step,
+        // Zone borders sit half a zone size from the zone centres, i.e. at 32 + 64k. Chunks only
+        // divide x and z, so a wall plane has borders along its horizontal axis only.
+        private static void AddChunkLines(GridPlane plane, float sign, float normalValue, Vector2 center, int segments, float step,
             List<Vector3> vertices, List<Color> colors, List<int> indices)
         {
             const float zoneSize = ZoneSystem.c_ZoneSize;
             const float halfZone = zoneSize / 2f;
 
-            for (int axis = 0; axis < 2; axis++)
+            bool horizontalPlane = plane == GridPlane.Terrain || plane == GridPlane.Top || plane == GridPlane.Bottom;
+            int axes = horizontalPlane ? 2 : 1;
+
+            for (int axis = 0; axis < axes; axis++)
             {
-                float centerAlong = axis == 0 ? center.x : center.z;
-                float centerAcross = axis == 0 ? center.z : center.x;
+                float centerAlong = axis == 0 ? center.x : center.y;
+                float centerAcross = axis == 0 ? center.y : center.x;
 
                 int first = Mathf.CeilToInt((centerAlong - Radius - halfZone) / zoneSize);
                 int last = Mathf.FloorToInt((centerAlong + Radius - halfZone) / zoneSize);
@@ -206,17 +252,17 @@ namespace NoHammerBuildMenu
                 for (int k = first; k <= last; k++)
                 {
                     float line = k * zoneSize + halfZone;
-                    AddRibbon(axis, line, centerAcross, line - centerAlong, ChunkLineWidth, ChunkLineLift,
-                        ChunkLineColor, flat, flatY, segments, step, vertices, colors, indices);
+                    AddRibbon(plane, sign, normalValue, axis, line, centerAcross, line - centerAlong, ChunkLineWidth, ChunkLineLift,
+                        ChunkLineColor, segments, step, vertices, colors, indices);
                 }
             }
         }
 
-        // Adds a flat ribbon running along the other axis at `line` (a world x for axis 0, z for axis 1),
-        // spanning the grid radius around `centerAcross`. `lineOffset` is the line's distance from the
-        // grid centre, used for the distance fade.
-        private static void AddRibbon(int axis, float line, float centerAcross, float lineOffset, float width, float lift,
-            Color baseColor, bool flat, float flatY, int segments, float step,
+        // Adds a flat ribbon running along the other in-plane axis at `line` (an `a` coordinate for
+        // axis 0, `b` for axis 1), spanning the grid radius around `centerAcross`. `lineOffset` is
+        // the line's distance from the grid centre, used for the distance fade.
+        private static void AddRibbon(GridPlane plane, float sign, float normalValue, int axis, float line, float centerAcross,
+            float lineOffset, float width, float lift, Color baseColor, int segments, float step,
             List<Vector3> vertices, List<Color> colors, List<int> indices)
         {
             float halfWidth = width / 2f;
@@ -233,18 +279,18 @@ namespace NoHammerBuildMenu
                 {
                     float along = line + side * halfWidth;
                     float across = centerAcross + t;
-                    float x = axis == 0 ? along : across;
-                    float z = axis == 0 ? across : along;
-                    float y = flat ? flatY : GroundHeight(x, z);
-                    vertices.Add(new Vector3(x, y + lift, z));
+                    float a = axis == 0 ? along : across;
+                    float b = axis == 0 ? across : along;
+                    float n = plane == GridPlane.Terrain ? GroundHeight(a, b) : normalValue;
+                    vertices.Add(ToWorld(plane, a, b, n + sign * lift));
                     colors.Add(color);
                 }
 
                 if (s > 0)
                 {
-                    int a = start + (s - 1) * 2;
-                    indices.Add(a); indices.Add(a + 1); indices.Add(a + 2);
-                    indices.Add(a + 1); indices.Add(a + 3); indices.Add(a + 2);
+                    int i = start + (s - 1) * 2;
+                    indices.Add(i); indices.Add(i + 1); indices.Add(i + 2);
+                    indices.Add(i + 1); indices.Add(i + 3); indices.Add(i + 2);
                 }
             }
         }

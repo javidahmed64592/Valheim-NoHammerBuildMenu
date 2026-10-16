@@ -18,8 +18,8 @@
        If using r2modman, this would be something like: /home/<user>/.config/r2modmanPlus-local/Valheim/profiles/<profile>/BepInEx
        ==================================================================== -->
   <PropertyGroup>
-    <ValheimDir>/path/to/steamapps/common/Valheim</ValheimDir>
-    <BepInExProfileDir>/path/to/mod manager/profiles/profile/BepInEx</BepInExProfileDir>
+    <ValheimDir>/home/javid/SecondarySSD/SteamLibrary/steamapps/common/Valheim</ValheimDir>
+    <BepInExProfileDir>/home/javid/.config/r2modmanPlus-local/Valheim/profiles/Dev/BepInEx</BepInExProfileDir>
 
     <ManagedDir>$(ValheimDir)/valheim_Data/Managed</ManagedDir>
     <BepInExCoreDir>$(BepInExProfileDir)/core</BepInExCoreDir>
