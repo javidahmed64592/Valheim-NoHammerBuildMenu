@@ -185,7 +185,7 @@ namespace NoHammerBuildMenu
 
             TextMeshProUGUI label = clone.GetComponent<TextMeshProUGUI>();
             label.enableAutoSizing = false;
-            label.enableWordWrapping = false;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
             label.text = text;
         }
 
