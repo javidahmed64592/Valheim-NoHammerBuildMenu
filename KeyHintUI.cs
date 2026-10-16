@@ -154,7 +154,16 @@ namespace NoHammerBuildMenu
 
                     if (hint.Keys[i] == ScrollIcon)
                     {
-                        Object.Instantiate(iconTemplate.gameObject, item.transform, false).SetActive(true);
+                        GameObject icon = Object.Instantiate(iconTemplate.gameObject, item.transform, false);
+                        icon.SetActive(true);
+
+                        // Without this the layout sizes the icon from its sprite's native size, which is
+                        // much bigger than the size the vanilla hint gives it.
+                        Vector2 iconSize = ((RectTransform)iconTemplate).rect.size;
+                        LayoutElement iconLayout = icon.GetComponent<LayoutElement>() ?? icon.AddComponent<LayoutElement>();
+                        iconLayout.minWidth = iconLayout.preferredWidth = iconSize.x;
+                        iconLayout.minHeight = iconLayout.preferredHeight = iconSize.y;
+                        iconLayout.flexibleWidth = iconLayout.flexibleHeight = 0f;
                     }
                     else
                     {
