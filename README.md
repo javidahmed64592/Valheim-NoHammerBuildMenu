@@ -6,6 +6,7 @@ This mod adds several improvements to the vanilla base hammer:
 - Toggle repair mode with `Shift+Mouse2` (right-click) while building.
 - Hold `Alt` and scroll to zoom the camera in and out while building, without unequipping the hammer.
 - Toggle the build grid with `Ctrl+Mouse2` (right-click) while building.
+- The mod's controls are listed in the build key hints at the bottom of the screen while a hammer is equipped.
 
 ## Build grid
 

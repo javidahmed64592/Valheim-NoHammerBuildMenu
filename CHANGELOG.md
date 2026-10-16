@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.0
+
+- The mod's controls (repair toggle, build grid toggle, grid distance and camera zoom) now show in the build key hints at the bottom of the screen, like the vanilla ones. They only show while a hammer patched by the mod is equipped, and not when using a gamepad.
+
 ## 0.6.0
 
 - The build grid now snaps and draws on whichever face of a piece you are looking at: the top (as before), the underside (e.g. ceilings), and vertical walls, so pieces can be aligned along all axes.
