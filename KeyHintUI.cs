@@ -120,7 +120,7 @@ namespace NoHammerBuildMenu
                 clone.SetActive(true);
 
                 hint.Text = clone.GetComponent<TextMeshProUGUI>();
-                hint.Text.enableWordWrapping = false;
+                hint.Text.textWrappingMode = TextWrappingModes.NoWrap;
                 hint.Text.alignment = TextAlignmentOptions.Center;
                 hint.AppliedText = null;
             }
