@@ -8,30 +8,37 @@ namespace NoHammerBuildMenu
 {
     // Adds this mod's controls to the vanilla build key hints (bottom of the screen while placing
     // pieces). Each hint is built from clones of the vanilla hint pieces (label, boxed key, "+" and
-    // the scroll icon) in a row right-aligned just above the vanilla hints, and is only shown while
-    // a hammer the mod patches is equipped.
+    // the scroll icon), stacked in two columns right-aligned just above the vanilla hints, and is only
+    // shown while a hammer the mod patches is equipped.
     internal static class KeyHintUI
     {
         private const string ContainerName = "NoHammerBuildMenu_KeyHints";
         private const string ScrollIcon = "@scroll";
+
+        private const float LabelFontSize = 14f;
+        private const float IconHeight = 32f;   // matches the height of a boxed key
+        private const float ColumnSpacing = 40f;
+        private const float RowSpacing = 4f;
 
         private enum HintVisibility { Always, GridOnly, BuildOnly }
 
         private class Hint
         {
             public string Label;
+            public int Column;
             public string[] Keys;   // localisation tokens or literal key names; ScrollIcon draws the scroll wheel icon
             public HintVisibility Visibility;
             public GameObject Item;
+            public CanvasGroup Group;
         }
 
-        // Left to right; the last one sits above the vanilla "Rotate" hint.
+        // Two columns, each stacked top to bottom; the right column sits above the vanilla "Rotate" hint.
         private static readonly List<Hint> Hints = new List<Hint>
         {
-            new Hint { Label = "Repair mode", Keys = new[] { "Left Shift", "$button_mouse1" }, Visibility = HintVisibility.Always },
-            new Hint { Label = "Build grid", Keys = new[] { "Left Ctrl", "$button_mouse1" }, Visibility = HintVisibility.BuildOnly },
-            new Hint { Label = "Grid distance", Keys = new[] { "Left Ctrl", ScrollIcon }, Visibility = HintVisibility.GridOnly },
-            new Hint { Label = "Zoom", Keys = new[] { "Left Alt", ScrollIcon }, Visibility = HintVisibility.Always },
+            new Hint { Label = "Build grid", Column = 0, Keys = new[] { "Left Ctrl", "$button_mouse1" }, Visibility = HintVisibility.BuildOnly },
+            new Hint { Label = "Repair mode", Column = 0, Keys = new[] { "Left Shift", "$button_mouse1" }, Visibility = HintVisibility.Always },
+            new Hint { Label = "Grid distance", Column = 1, Keys = new[] { "Left Ctrl", ScrollIcon }, Visibility = HintVisibility.GridOnly },
+            new Hint { Label = "Zoom", Column = 1, Keys = new[] { "Left Alt", ScrollIcon }, Visibility = HintVisibility.Always },
         };
 
         private static GameObject _container;
@@ -63,12 +70,17 @@ namespace NoHammerBuildMenu
 
             foreach (Hint hint in Hints)
             {
-                bool visible;
+                bool visible = true;
+                bool blank = false; // keeps its space so the other column's rows stay level
                 switch (hint.Visibility)
                 {
-                    case HintVisibility.BuildOnly: visible = !repairing; break;
-                    case HintVisibility.GridOnly: visible = !repairing && gridOn; break;
-                    default: visible = true; break;
+                    case HintVisibility.BuildOnly:
+                        visible = !repairing;
+                        break;
+                    case HintVisibility.GridOnly:
+                        visible = !repairing;
+                        blank = !gridOn;
+                        break;
                 }
 
                 if (hint.Item.activeSelf != visible)
@@ -76,6 +88,7 @@ namespace NoHammerBuildMenu
                     hint.Item.SetActive(visible);
                     _layoutDirty = true;
                 }
+                hint.Group.alpha = blank ? 0f : 1f;
             }
 
             if (!_container.activeSelf)
@@ -123,23 +136,41 @@ namespace NoHammerBuildMenu
             rect.SetParent(keyHints.m_buildHints.transform, false);
             rect.pivot = new Vector2(1f, 0f);
 
-            // Same row settings as the vanilla hints.
-            var layout = rect.gameObject.AddComponent<HorizontalLayoutGroup>();
-            layout.spacing = keyboardLayout.spacing;
-            layout.childAlignment = TextAnchor.LowerRight;
-            layout.childControlWidth = keyboardLayout.childControlWidth;
-            layout.childControlHeight = keyboardLayout.childControlHeight;
-            layout.childForceExpandWidth = false;
-            layout.childForceExpandHeight = false;
+            var rowLayout = rect.gameObject.AddComponent<HorizontalLayoutGroup>();
+            rowLayout.spacing = ColumnSpacing;
+            rowLayout.childAlignment = TextAnchor.LowerRight;
+            rowLayout.childControlWidth = true;
+            rowLayout.childControlHeight = true;
+            rowLayout.childForceExpandWidth = false;
+            rowLayout.childForceExpandHeight = false;
 
             var fitter = rect.gameObject.AddComponent<ContentSizeFitter>();
             fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
+            int columnCount = 0;
+            foreach (Hint hint in Hints)
+                columnCount = Mathf.Max(columnCount, hint.Column + 1);
+
+            var columns = new Transform[columnCount];
+            for (int c = 0; c < columnCount; c++)
+            {
+                var column = new GameObject(ContainerName + "_Column" + c, typeof(RectTransform));
+                column.transform.SetParent(rect, false);
+                var columnLayout = column.AddComponent<VerticalLayoutGroup>();
+                columnLayout.spacing = RowSpacing;
+                columnLayout.childAlignment = TextAnchor.LowerLeft;
+                columnLayout.childControlWidth = true;
+                columnLayout.childControlHeight = true;
+                columnLayout.childForceExpandWidth = false;
+                columnLayout.childForceExpandHeight = false;
+                columns[c] = column.transform;
+            }
+
             foreach (Hint hint in Hints)
             {
                 // Start from a vanilla multi-key hint (for its row settings), then rebuild its contents.
-                GameObject item = Object.Instantiate(copy.gameObject, rect, false);
+                GameObject item = Object.Instantiate(copy.gameObject, columns[hint.Column], false);
                 item.name = "NoHammerBuildMenu_Hint_" + hint.Label;
                 item.SetActive(true);
                 for (int i = item.transform.childCount - 1; i >= 0; i--)
@@ -157,12 +188,14 @@ namespace NoHammerBuildMenu
                         GameObject icon = Object.Instantiate(iconTemplate.gameObject, item.transform, false);
                         icon.SetActive(true);
 
-                        // Without this the layout sizes the icon from its sprite's native size, which is
-                        // much bigger than the size the vanilla hint gives it.
-                        Vector2 iconSize = ((RectTransform)iconTemplate).rect.size;
+                        // Without this the layout sizes the icon from its sprite's native size. Pin it to the
+                        // height of a key, with a width that keeps the sprite's aspect ratio so there is no
+                        // empty space beside it.
+                        Sprite sprite = icon.GetComponent<Image>().sprite;
+                        float aspect = sprite != null ? sprite.rect.width / sprite.rect.height : 0.6f;
                         LayoutElement iconLayout = icon.GetComponent<LayoutElement>() ?? icon.AddComponent<LayoutElement>();
-                        iconLayout.minWidth = iconLayout.preferredWidth = iconSize.x;
-                        iconLayout.minHeight = iconLayout.preferredHeight = iconSize.y;
+                        iconLayout.minWidth = iconLayout.preferredWidth = IconHeight * aspect;
+                        iconLayout.minHeight = iconLayout.preferredHeight = IconHeight;
                         iconLayout.flexibleWidth = iconLayout.flexibleHeight = 0f;
                     }
                     else
@@ -174,6 +207,7 @@ namespace NoHammerBuildMenu
                 }
 
                 hint.Item = item;
+                hint.Group = item.GetComponent<CanvasGroup>() ?? item.AddComponent<CanvasGroup>();
             }
 
             _rotateAnchor = (RectTransform)rotate;
@@ -194,6 +228,7 @@ namespace NoHammerBuildMenu
 
             TextMeshProUGUI label = clone.GetComponent<TextMeshProUGUI>();
             label.enableAutoSizing = false;
+            label.fontSize = LabelFontSize;
             label.textWrappingMode = TextWrappingModes.NoWrap;
             label.text = text;
         }
@@ -205,7 +240,10 @@ namespace NoHammerBuildMenu
             _rotateAnchor = null;
             _createFailed = false;
             foreach (Hint hint in Hints)
+            {
                 hint.Item = null;
+                hint.Group = null;
+            }
         }
 
         [HarmonyPatch(typeof(KeyHints), "UpdateHints")]
