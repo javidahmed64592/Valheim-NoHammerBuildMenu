@@ -15,11 +15,11 @@ namespace NoHammerBuildMenu
         private const string ContainerName = "NoHammerBuildMenu_KeyHints";
         private const string ScrollIcon = "@scroll";
 
-        private const float LabelFontSize = 14f;
+        private const float LabelFontSize = 16f;
         private const float IconHeight = 32f;   // layout height of the icon: matches a boxed key
-        private const float IconScale = 1.5f;   // drawn this much bigger than its layout size: the sprite has padding
+        private const float IconScale = 1.8f;   // drawn this much bigger than its layout size: the sprite has padding
         private const float ColumnSpacing = 40f;
-        private const float RowSpacing = 6f;
+        private const float RowSpacing = 16f;   // room for the scaled-up icons, which are drawn taller than their layout height
 
         private enum HintVisibility { Always, GridOnly, BuildOnly }
 
@@ -223,12 +223,46 @@ namespace NoHammerBuildMenu
                 hint.Group = item.GetComponent<CanvasGroup>() ?? item.AddComponent<CanvasGroup>();
             }
 
+            // Give matching parts (label, key, "+", key or icon) of a column's hints the same width, so the
+            // keys line up between its rows. All items are active here, so they have a layout to measure.
+            LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
+            for (int c = 0; c < columnCount; c++)
+                EqualiseColumnWidths(c);
+
             _rotateAnchor = (RectTransform)rotate;
             _rotateIcon = (RectTransform)iconTemplate;
             _rotateIconImage = iconTemplate.GetComponent<Image>();
             _container = rect.gameObject;
             _layoutDirty = true;
             return true;
+        }
+
+        private static void EqualiseColumnWidths(int column)
+        {
+            var items = new List<Transform>();
+            foreach (Hint hint in Hints)
+            {
+                if (hint.Column == column)
+                    items.Add(hint.Item.transform);
+            }
+
+            int parts = int.MaxValue;
+            foreach (Transform item in items)
+                parts = Mathf.Min(parts, item.childCount);
+
+            for (int part = 0; part < parts; part++)
+            {
+                float width = 0f;
+                foreach (Transform item in items)
+                    width = Mathf.Max(width, ((RectTransform)item.GetChild(part)).rect.width);
+
+                foreach (Transform item in items)
+                {
+                    GameObject child = item.GetChild(part).gameObject;
+                    LayoutElement layout = child.GetComponent<LayoutElement>() ?? child.AddComponent<LayoutElement>();
+                    layout.minWidth = width;
+                }
+            }
         }
 
         private static float SpriteAspect(Image image) =>
