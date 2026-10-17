@@ -22,10 +22,6 @@ namespace NoHammerBuildMenu
         private const string ButtonName = "NoHammerBuildMenu_Toggle";
         private const string ButtonQueryName = ButtonName + "!" + PluginGUID;
 
-        // Grid distances are 0.25m doubled/halved, so they always line up with vanilla distances.
-        private const float GridMinSize = 0.25f;
-        private const float GridMaxSize = 4f;
-        private const float GridDefaultSize = 0.5f;
         private static readonly float[] GridSizes = { 0.25f, 0.5f, 1f, 2f, 4f };
 
         internal static ItemDrop.ItemData _phantomHammer;
@@ -70,18 +66,18 @@ namespace NoHammerBuildMenu
             _gridSize = Config.Bind(
                 "Grid",
                 "Snap Distance",
-                GridDefaultSize,
+                GridSizes[1],
                 new ConfigDescription(
                     "Distance in metres between grid vertices (0.25, 0.5, 1, 2 or 4). While building, " +
                     "hold Ctrl and scroll to double or halve it.",
-                    new AcceptableValueRange<float>(GridMinSize, GridMaxSize)));
+                    new AcceptableValueRange<float>(GridSizes[0], GridSizes[GridSizes.Length - 1])));
 
             GridOverlay.BindConfig(Config);
             ChestMaterials.BindConfig(Config);
 
             // Reject hand-edited values that aren't one of the doubling/halving steps.
             if (Array.IndexOf(GridSizes, _gridSize.Value) < 0)
-                _gridSize.Value = GridDefaultSize;
+                _gridSize.Value = GridSizes[1];
 
             _harmony = new Harmony(PluginGUID);
             _harmony.PatchAll();
@@ -211,7 +207,7 @@ namespace NoHammerBuildMenu
                 return;
 
             float size = scroll > 0f ? _gridSize.Value * 2f : _gridSize.Value / 2f;
-            size = Mathf.Clamp(size, GridMinSize, GridMaxSize);
+            size = Mathf.Clamp(size, GridSizes[0], GridSizes[GridSizes.Length - 1]);
             if (Mathf.Approximately(size, _gridSize.Value))
                 return;
 
