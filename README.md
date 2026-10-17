@@ -25,7 +25,13 @@ Snapping to existing pieces takes priority over the grid.
 - The world's chunk borders are highlighted in red, and a green line runs through the centre of each chunk so you can easily find it.
 - The grid's radius, fade, line widths, line colours (including the chunk border and centre lines) and more can be changed in the `Grid Appearance` section of the config file.
 
-![NoHammerBuildMenu Example](https://github.com/javidahmed64592/Valheim-NoHammerBuildMenu/raw/main/game_screenshot.png)
+The default chunk lines are red:
+
+![Chunk Lines](https://github.com/javidahmed64592/Valheim-NoHammerBuildMenu/raw/main/game_screenshot_1.png)
+
+The edges of the chunks are highlighted in green:
+
+![Chunk Edges](https://github.com/javidahmed64592/Valheim-NoHammerBuildMenu/raw/main/game_screenshot_2.png)
 
 ## Nearby chests
 
