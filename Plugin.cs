@@ -17,7 +17,7 @@ namespace NoHammerBuildMenu
     {
         public const string PluginGUID = "javidahmed64592.nohammerbuildmenu";
         public const string PluginName = "No Hammer Build Menu";
-        public const string PluginVersion = "0.6.0";
+        public const string PluginVersion = "0.7.0";
 
         private const string HammerPrefabName = "Hammer";
         private const string ButtonName = "NoHammerBuildMenu_Toggle";
@@ -35,6 +35,7 @@ namespace NoHammerBuildMenu
         private const float AxisAlignedWall = 0.9f;
 
         private static ConfigEntry<bool> _gridEnabled;
+        internal static bool GridEnabled => _gridEnabled.Value;
         private static ConfigEntry<float> _gridSize;
         private static readonly GridOverlay _gridOverlay = new GridOverlay();
 
@@ -175,7 +176,7 @@ namespace NoHammerBuildMenu
         // The grid is for hammers only (not the hoe, cultivator, etc.). Besides the phantom
         // hammer, any build tool with a piece table whose item, prefab or table name mentions
         // "hammer" counts, which covers vanilla and modded hammers.
-        private static bool IsHammerEquipped(Player player)
+        internal static bool IsHammerEquipped(Player player)
         {
             ItemDrop.ItemData item = player.GetRightItem();
             if (item == null)
