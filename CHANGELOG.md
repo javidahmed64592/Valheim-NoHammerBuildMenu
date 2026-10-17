@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.1
+
+- Increased the default radius for nearby chests from 20m to 30m.
+- Updated README.
+
 ## 0.8.0
 
 - Building now takes materials from nearby chests as well as your inventory. Your own stock is used first and only the shortfall comes from chests (nearest first), and a piece can only be built if your inventory and nearby chests combined have enough. The build panel shows the combined amount.
