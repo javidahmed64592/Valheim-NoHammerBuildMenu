@@ -6,7 +6,6 @@ using Jotunn.Managers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using UnityEngine;
 
 namespace NoHammerBuildMenu
@@ -29,21 +28,18 @@ namespace NoHammerBuildMenu
         private const float GridDefaultSize = 0.5f;
         private static readonly float[] GridSizes = { 0.25f, 0.5f, 1f, 2f, 4f };
 
-        private static ItemDrop.ItemData _phantomHammer;
-
-        // Minimum normal component for a vertical face to count as axis-aligned (about 25 degrees).
-        private const float AxisAlignedWall = 0.9f;
+        internal static ItemDrop.ItemData _phantomHammer;
 
         private static ConfigEntry<bool> _gridEnabled;
         internal static bool GridEnabled => _gridEnabled.Value;
-        private static ConfigEntry<float> _gridSize;
+        internal static ConfigEntry<float> _gridSize;
         private static readonly GridOverlay _gridOverlay = new GridOverlay();
 
         // Latest grid-snapped aim point from Player.PieceRayTest, used to place the grid overlay.
-        private static int _aimFrame = -10;
-        private static Vector3 _aimPoint;
-        private static GridPlane _aimPlane;
-        private static float _aimSign;
+        internal static int _aimFrame = -10;
+        internal static Vector3 _aimPoint;
+        internal static GridPlane _aimPlane;
+        internal static float _aimSign;
 
         private ConfigEntry<KeyCode> _keybind;
         private Harmony _harmony;
@@ -165,7 +161,7 @@ namespace NoHammerBuildMenu
             _gridOverlay.Show(_aimPoint, _gridSize.Value, _aimPlane, _aimSign);
         }
 
-        private static bool GridActive(Player player)
+        internal static bool GridActive(Player player)
         {
             return _gridEnabled.Value
                 && player.InPlaceMode()
@@ -197,16 +193,14 @@ namespace NoHammerBuildMenu
         private static bool ContainsHammer(string name) =>
             name != null && name.IndexOf("hammer", StringComparison.OrdinalIgnoreCase) >= 0;
 
-        private static float SnapTo(float value, float size) => Mathf.Round(value / size) * size;
+        internal static bool ShiftHeld() => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
-        private static bool ShiftHeld() => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-
-        private static bool CtrlHeld() => Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+        internal static bool CtrlHeld() => Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
 
         private static bool AltHeld() => Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
 
         // Alt+scroll zooms the camera while placing with a hammer.
-        private static bool AltZoomActive(Player player) =>
+        internal static bool AltZoomActive(Player player) =>
             player == Player.m_localPlayer && AltHeld() && player.InPlaceMode() && IsHammerEquipped(player);
 
         // Ctrl+scroll: double / halve the grid distance.
@@ -293,212 +287,6 @@ namespace NoHammerBuildMenu
                 m_durability = itemDrop.m_itemData.m_shared.m_maxDurability,
                 m_customData = new Dictionary<string, string>()
             };
-        }
-
-        // Includes the phantom hammer's piece table in every inventory scan so
-        // UpdateKnownRecipesList discovers its pieces even without a real hammer.
-        [HarmonyPatch(typeof(Inventory), nameof(Inventory.GetAllPieceTables))]
-        private static class Inventory_GetAllPieceTables_Patch
-        {
-            [HarmonyPostfix]
-            private static void Postfix(List<PieceTable> tables)
-            {
-                if (_phantomHammer?.m_shared?.m_buildPieces != null
-                    && !tables.Contains(_phantomHammer.m_shared.m_buildPieces))
-                {
-                    tables.Add(_phantomHammer.m_shared.m_buildPieces);
-                }
-            }
-        }
-
-        // Makes EquipItem accept the phantom hammer despite it not being in the player's inventory.
-        [HarmonyPatch(typeof(Inventory), nameof(Inventory.ContainsItem))]
-        private static class Inventory_ContainsItem_Patch
-        {
-            [HarmonyPrefix]
-            private static bool Prefix(ItemDrop.ItemData item, ref bool __result)
-            {
-                if (_phantomHammer != null && item == _phantomHammer)
-                {
-                    __result = true;
-                    return false;
-                }
-                return true;
-            }
-        }
-
-        // Moves the aimed placement point so one of the ghost's snap points (or its origin, if it
-        // has none) lands on the nearest grid vertex. This runs before vanilla positions the ghost
-        // and applies its own piece-to-piece snapping, so snap points of existing pieces within
-        // vanilla's snap range still win over the grid, and validity checks see the final position.
-        [HarmonyPatch(typeof(Player), "PieceRayTest")]
-        private static class Player_PieceRayTest_Patch
-        {
-            [HarmonyPostfix]
-            private static void Postfix(Player __instance, bool __result, ref Vector3 point, ref Vector3 normal, ref Piece piece)
-            {
-                // Only touch `point`: the other out params must keep the values vanilla produced.
-                if (!__result
-                    || __instance != Player.m_localPlayer
-                    || !GridActive(__instance))
-                    return;
-
-                // The game positions the ghost so that its anchor sits exactly at `point`: the
-                // selected snap point in manual mode, otherwise the point on the piece's colliders
-                // closest to the aim point (which varies with orientation and targeted surface).
-                // So whatever the anchor is, snapping `point` itself puts it on the vertex.
-                //
-                // Only the coordinates lying in the targeted surface's plane are snapped. The one
-                // along its normal stays where the aim ray hit, so the point never leaves the surface
-                // and nothing snaps to empty air. Terrain and other non-piece surfaces keep snapping
-                // horizontally only.
-                float size = _gridSize.Value;
-                GridPlane plane = GridPlane.Terrain;
-                float sign = 1f;
-
-                if (piece == null)
-                {
-                    point.x = SnapTo(point.x, size);
-                    point.z = SnapTo(point.z, size);
-                }
-                else if (Mathf.Abs(normal.y) > 0.5f)
-                {
-                    // Top or underside of a piece.
-                    point.x = SnapTo(point.x, size);
-                    point.z = SnapTo(point.z, size);
-                    plane = normal.y > 0f ? GridPlane.Top : GridPlane.Bottom;
-                    sign = Mathf.Sign(normal.y);
-                }
-                else if (Mathf.Abs(normal.x) > AxisAlignedWall)
-                {
-                    point.y = SnapTo(point.y, size);
-                    point.z = SnapTo(point.z, size);
-                    plane = GridPlane.WallX;
-                    sign = Mathf.Sign(normal.x);
-                }
-                else if (Mathf.Abs(normal.z) > AxisAlignedWall)
-                {
-                    point.x = SnapTo(point.x, size);
-                    point.y = SnapTo(point.y, size);
-                    plane = GridPlane.WallZ;
-                    sign = Mathf.Sign(normal.z);
-                }
-                else
-                {
-                    // Diagonal wall: a horizontal snap would slide the point off the surface, so
-                    // snap the height only and skip the overlay.
-                    point.y = SnapTo(point.y, size);
-                    plane = GridPlane.None;
-                }
-
-                _aimFrame = Time.frameCount;
-                _aimPoint = point;
-                _aimPlane = plane;
-                _aimSign = sign;
-            }
-        }
-
-        // Ctrl+scroll adjusts the grid, so stop vanilla from also using it to rotate the piece.
-        [HarmonyPatch]
-        private static class ZInput_GetMouseScrollWheel_Patch
-        {
-            private static MethodBase TargetMethod() =>
-                AccessTools.Method(typeof(ZInput), "GetMouseScrollWheel");
-
-            private static bool Prepare() => TargetMethod() != null;
-
-            [HarmonyPostfix]
-            private static void Postfix(ref float __result)
-            {
-                Player player = Player.m_localPlayer;
-                if (player != null && CtrlHeld() && GridActive(player))
-                    __result = 0f;
-            }
-        }
-
-        // Vanilla only zooms the camera while placing if the piece can't rotate (it uses scroll to
-        // rotate otherwise). Report "can't rotate" while Alt is held so the camera zooms instead.
-        [HarmonyPatch(typeof(Player), nameof(Player.CanRotatePiece))]
-        private static class Player_CanRotatePiece_Patch
-        {
-            [HarmonyPostfix]
-            private static void Postfix(Player __instance, ref bool __result)
-            {
-                if (__result && AltZoomActive(__instance))
-                    __result = false;
-            }
-        }
-
-        // Stops Alt+scroll from also rotating the piece: UpdatePlacement accumulates scroll into
-        // the rotation, so restore the rotation state it had before the call.
-        [HarmonyPatch(typeof(Player), "UpdatePlacement")]
-        private static class Player_UpdatePlacement_Patch
-        {
-            private static readonly FieldInfo ScrollField = AccessTools.Field(typeof(Player), "m_scrollCurrAmount");
-            private static readonly FieldInfo RotationField = AccessTools.Field(typeof(Player), "m_placeRotation");
-
-            [HarmonyPrefix]
-            private static void Prefix(Player __instance, out (float scroll, int rotation)? __state)
-            {
-                __state = null;
-                if (ScrollField != null && RotationField != null && AltZoomActive(__instance))
-                    __state = ((float)ScrollField.GetValue(__instance), (int)RotationField.GetValue(__instance));
-            }
-
-            [HarmonyPostfix]
-            private static void Postfix(Player __instance, (float scroll, int rotation)? __state)
-            {
-                if (__state == null)
-                    return;
-                ScrollField.SetValue(__instance, __state.Value.scroll);
-                RotationField.SetValue(__instance, __state.Value.rotation);
-            }
-        }
-
-        // Prevents Shift+RMB / Ctrl+RMB from also opening the build menu while we use them
-        // for the repair and grid toggles, with the phantom hammer or any real hammer.
-        [HarmonyPatch(typeof(Player), "UpdateBuildGuiInput")]
-        private static class Player_UpdateBuildGuiInput_Patch
-        {
-            [HarmonyPrefix]
-            private static bool Prefix(Player __instance)
-            {
-                if (__instance == Player.m_localPlayer
-                    && (ShiftHeld() || CtrlHeld())
-                    && IsHammerEquipped(__instance))
-                    return false;
-                return true;
-            }
-        }
-
-        // SetupVisEquipment in Valheim l-1.0.x crashes with a NullReferenceException when
-        // equipping items that didn't come through the normal inventory flow. Work around it
-        // by hiding the phantom from the method and setting the visual directly afterward.
-        [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.SetupVisEquipment))]
-        private static class Humanoid_SetupVisEquipment_Patch
-        {
-            [HarmonyPrefix]
-            private static void Prefix(Humanoid __instance, out ItemDrop.ItemData __state)
-            {
-                __state = null;
-                if (_phantomHammer != null && __instance.GetRightItem() == _phantomHammer)
-                {
-                    __state = _phantomHammer;
-                    __instance.m_rightItem = null;
-                }
-            }
-
-            [HarmonyPostfix]
-            private static void Postfix(Humanoid __instance, ItemDrop.ItemData __state)
-            {
-                if (__state == null) return;
-                __instance.m_rightItem = __state;
-                if (__instance is Player player)
-                    player.m_visEquipment?.SetRightItem(
-                        __state.m_dropPrefab.name.GetStableHashCode(),
-                        __state.m_quality
-                    );
-            }
         }
     }
 }

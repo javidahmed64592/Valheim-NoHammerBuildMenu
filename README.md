@@ -22,8 +22,8 @@ Snapping to existing pieces takes priority over the grid.
 
 - `Ctrl+Mouse2` (right-click) toggles the grid.
 - `Ctrl+Scroll` doubles or halves the distance between vertices: 0.25m, 0.5m, 1m, 2m or 4m (default 0.5m).
-- The world's chunk borders are highlighted in a different colour.
-- The grid's radius, fade, line widths, line colours and more can be changed in the `Grid Appearance` section of the config file.
+- The world's chunk borders are highlighted in red, and a green line runs through the centre of each chunk so you can easily find it.
+- The grid's radius, fade, line widths, line colours (including the chunk border and centre lines) and more can be changed in the `Grid Appearance` section of the config file.
 
 ![NoHammerBuildMenu Example](https://github.com/javidahmed64592/Valheim-NoHammerBuildMenu/raw/main/game_screenshot.png)
 
