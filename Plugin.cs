@@ -17,7 +17,7 @@ namespace NoHammerBuildMenu
     {
         public const string PluginGUID = "javidahmed64592.nohammerbuildmenu";
         public const string PluginName = "No Hammer Build Menu";
-        public const string PluginVersion = "0.7.0";
+        public const string PluginVersion = "0.8.0";
 
         private const string HammerPrefabName = "Hammer";
         private const string ButtonName = "NoHammerBuildMenu_Toggle";
@@ -81,6 +81,7 @@ namespace NoHammerBuildMenu
                     new AcceptableValueRange<float>(GridMinSize, GridMaxSize)));
 
             GridOverlay.BindConfig(Config);
+            ChestMaterials.BindConfig(Config);
 
             // Reject hand-edited values that aren't one of the doubling/halving steps.
             if (Array.IndexOf(GridSizes, _gridSize.Value) < 0)
