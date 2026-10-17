@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0
+
+- The build grid now draws a distinct line through the centre of each world chunk, making it easy to find a chunk's centre. Its width and colour can be changed with the new `Chunk Centre Line Width` and `Chunk Centre Line Color` options in the `Grid Appearance` config section.
+- Moved the Harmony patches out of `Plugin.cs` into dedicated files (no behaviour change).
+- Updated README.
+
 ## 0.8.1
 
 - Increased the default radius for nearby chests from 20m to 30m.
