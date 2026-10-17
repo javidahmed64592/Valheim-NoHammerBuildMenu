@@ -7,6 +7,12 @@ This mod adds several improvements to the vanilla base hammer:
 - Hold `Alt` and scroll to zoom the camera in and out while building, without unequipping the hammer.
 - Toggle the build grid with `Ctrl+Mouse2` (right-click) while building.
 - The mod's controls are listed in the build key hints at the bottom of the screen while a hammer is equipped.
+- Building uses materials from nearby chests when your inventory runs short (see [Nearby chests](#nearby-chests)).
+
+## Nearby chests
+
+When you place a piece, materials come from your inventory first and any shortfall is taken from chests within range, nearest first. You can only build if your inventory and the nearby chests together have enough.
+Only chests you could normally open are used. Enable/disable this and set the range (default 20m) in the `Chests` section of the config file.
 
 ## Build grid
 

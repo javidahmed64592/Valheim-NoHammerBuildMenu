@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0
+
+- Building now takes materials from nearby chests as well as your inventory. Your own stock is used first and only the shortfall comes from chests (nearest first), and a piece can only be built if your inventory and nearby chests combined have enough. The build panel shows the combined amount.
+- Only player-built chests you could normally open are used (not other players' private chests, chests in use, or ones in a ward you can't access).
+- Added a new `Chests` config section with `Use Nearby Chests` and `Radius` (default 20m).
+
 ## 0.7.0
 
 - The mod's controls (repair toggle, build grid toggle, grid distance and camera zoom) now show in the build key hints at the bottom of the screen, like the vanilla ones. They only show while a hammer patched by the mod is equipped, and not when using a gamepad.
