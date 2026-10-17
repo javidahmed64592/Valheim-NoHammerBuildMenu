@@ -16,9 +16,10 @@ namespace NoHammerBuildMenu
         private const string ScrollIcon = "@scroll";
 
         private const float LabelFontSize = 14f;
-        private const float IconHeight = 32f;   // matches the height of a boxed key
+        private const float IconHeight = 32f;   // layout height of the icon: matches a boxed key
+        private const float IconScale = 1.5f;   // drawn this much bigger than its layout size: the sprite has padding
         private const float ColumnSpacing = 40f;
-        private const float RowSpacing = 4f;
+        private const float RowSpacing = 6f;
 
         private enum HintVisibility { Always, GridOnly, BuildOnly }
 
@@ -43,6 +44,8 @@ namespace NoHammerBuildMenu
 
         private static GameObject _container;
         private static RectTransform _rotateAnchor;
+        private static RectTransform _rotateIcon;
+        private static Image _rotateIconImage;
         private static bool _createFailed;
         private static bool _layoutDirty;
 
@@ -106,12 +109,19 @@ namespace NoHammerBuildMenu
             AlignToRotateHint();
         }
 
-        // Right edge and top of the container line up with the vanilla "Rotate" hint's.
+        // The container's top right lines up with the vanilla "Rotate" hint: its top, and the right edge of
+        // its icon as drawn (the icon's rect is wider than the sprite inside it).
         private static void AlignToRotateHint()
         {
             var corners = new Vector3[4];
             _rotateAnchor.GetWorldCorners(corners); // 0 = bottom left, 1 = top left, 2 = top right, 3 = bottom right
-            _container.transform.position = new Vector3(corners[2].x, corners[2].y, corners[2].z);
+
+            Rect iconRect = _rotateIcon.rect;
+            float drawnWidth = Mathf.Min(iconRect.width, iconRect.height * SpriteAspect(_rotateIconImage));
+            Vector3 iconCentre = _rotateIcon.TransformPoint(iconRect.center);
+            float right = iconCentre.x + drawnWidth / 2f * _rotateIcon.lossyScale.x;
+
+            _container.transform.position = new Vector3(right, corners[2].y, corners[2].z);
         }
 
         private static bool Create(KeyHints keyHints)
@@ -159,7 +169,8 @@ namespace NoHammerBuildMenu
                 column.transform.SetParent(rect, false);
                 var columnLayout = column.AddComponent<VerticalLayoutGroup>();
                 columnLayout.spacing = RowSpacing;
-                columnLayout.childAlignment = TextAnchor.LowerLeft;
+                // The right column is right-aligned so its icons stack above the vanilla Rotate icon.
+                columnLayout.childAlignment = c == columnCount - 1 ? TextAnchor.LowerRight : TextAnchor.LowerLeft;
                 columnLayout.childControlWidth = true;
                 columnLayout.childControlHeight = true;
                 columnLayout.childForceExpandWidth = false;
@@ -188,15 +199,17 @@ namespace NoHammerBuildMenu
                         GameObject icon = Object.Instantiate(iconTemplate.gameObject, item.transform, false);
                         icon.SetActive(true);
 
-                        // Without this the layout sizes the icon from its sprite's native size. Pin it to the
-                        // height of a key, with a width that keeps the sprite's aspect ratio so there is no
-                        // empty space beside it.
-                        Sprite sprite = icon.GetComponent<Image>().sprite;
-                        float aspect = sprite != null ? sprite.rect.width / sprite.rect.height : 0.6f;
+                        // Without this the layout sizes the icon from its sprite's native size. Its layout
+                        // size is that of a key box, with a width that keeps the sprite's aspect ratio. The
+                        // sprite is padded, so it is drawn bigger than that (scaling doesn't affect layout).
+                        Image image = icon.GetComponent<Image>();
+                        image.preserveAspect = true;
+                        float aspect = SpriteAspect(image);
                         LayoutElement iconLayout = icon.GetComponent<LayoutElement>() ?? icon.AddComponent<LayoutElement>();
-                        iconLayout.minWidth = iconLayout.preferredWidth = IconHeight * aspect;
+                        iconLayout.minWidth = iconLayout.preferredWidth = IconHeight * aspect * IconScale;
                         iconLayout.minHeight = iconLayout.preferredHeight = IconHeight;
                         iconLayout.flexibleWidth = iconLayout.flexibleHeight = 0f;
+                        icon.transform.localScale = new Vector3(IconScale, IconScale, 1f);
                     }
                     else
                     {
@@ -211,10 +224,15 @@ namespace NoHammerBuildMenu
             }
 
             _rotateAnchor = (RectTransform)rotate;
+            _rotateIcon = (RectTransform)iconTemplate;
+            _rotateIconImage = iconTemplate.GetComponent<Image>();
             _container = rect.gameObject;
             _layoutDirty = true;
             return true;
         }
+
+        private static float SpriteAspect(Image image) =>
+            image.sprite != null ? image.sprite.rect.width / image.sprite.rect.height : 0.6f;
 
         private static void AddText(Transform template, Transform parent, string text)
         {
@@ -238,6 +256,8 @@ namespace NoHammerBuildMenu
         {
             _container = null;
             _rotateAnchor = null;
+            _rotateIcon = null;
+            _rotateIconImage = null;
             _createFailed = false;
             foreach (Hint hint in Hints)
             {
