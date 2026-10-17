@@ -30,7 +30,7 @@ namespace NoHammerBuildMenu
 
             _enabled = config.Bind(section, "Use Nearby Chests", true,
                 "When building, take any materials you are missing from your inventory out of nearby chests.");
-            _radius = config.Bind(section, "Radius", 20f,
+            _radius = config.Bind(section, "Radius", 30f,
                 new ConfigDescription("Distance in metres from the player within which chests are used for building materials.",
                     new AcceptableValueRange<float>(1f, 128f)));
         }
