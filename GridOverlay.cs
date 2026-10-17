@@ -26,6 +26,8 @@ namespace NoHammerBuildMenu
         private static ConfigEntry<float> _chunkLineLift;   // slightly above the grid lines so they draw on top
         private static ConfigEntry<Color> _lineColor;
         private static ConfigEntry<Color> _chunkLineColor;
+        private static ConfigEntry<float> _chunkCentreLineWidth; // width of the lines through each chunk's centre
+        private static ConfigEntry<Color> _chunkCentreLineColor;
 
         private static float Radius => _radius.Value;
         // Fade must start inside the radius, otherwise the fade division is by zero or negative.
@@ -38,6 +40,8 @@ namespace NoHammerBuildMenu
         private static float ChunkLineLift => _chunkLineLift.Value;
         private static Color LineColor => _lineColor.Value;
         private static Color ChunkLineColor => _chunkLineColor.Value;
+        private static float ChunkCentreLineWidth => _chunkCentreLineWidth.Value;
+        private static Color ChunkCentreLineColor => _chunkCentreLineColor.Value;
 
         public static void BindConfig(ConfigFile config)
         {
@@ -67,6 +71,11 @@ namespace NoHammerBuildMenu
             _chunkLineLift = config.Bind(section, "Chunk Line Lift", 0.13f,
                 new ConfigDescription("Height in metres above the surface of chunk border lines; keep slightly above Lift so they draw on top.",
                     new AcceptableValueRange<float>(0f, 1f)));
+            _chunkCentreLineWidth = config.Bind(section, "Chunk Centre Line Width", 0.12f,
+                new ConfigDescription("Width in metres of the lines drawn through the centre of each world chunk (zone).",
+                    new AcceptableValueRange<float>(0.01f, 2f)));
+            _chunkCentreLineColor = config.Bind(section, "Chunk Centre Line Color", new Color(0.1f, 1f, 0.4f, 0.75f),
+                "Colour (including alpha) of the lines through the centre of each world chunk.");
             _lineColor = config.Bind(section, "Line Color", new Color(1f, 1f, 1f, 0.3f),
                 "Colour (including alpha) of the regular grid lines.");
             _chunkLineColor = config.Bind(section, "Chunk Line Color", new Color(1f, 0.1f, 0.1f, 0.75f),
@@ -246,15 +255,28 @@ namespace NoHammerBuildMenu
                 float centerAlong = axis == 0 ? center.x : center.y;
                 float centerAcross = axis == 0 ? center.y : center.x;
 
-                int first = Mathf.CeilToInt((centerAlong - Radius - halfZone) / zoneSize);
-                int last = Mathf.FloorToInt((centerAlong + Radius - halfZone) / zoneSize);
+                AddZoneLines(plane, sign, normalValue, axis, halfZone, centerAlong, centerAcross, ChunkLineWidth, ChunkLineColor,
+                    segments, step, vertices, colors, indices);
+                AddZoneLines(plane, sign, normalValue, axis, 0f, centerAlong, centerAcross, ChunkCentreLineWidth, ChunkCentreLineColor,
+                    segments, step, vertices, colors, indices);
+            }
+        }
 
-                for (int k = first; k <= last; k++)
-                {
-                    float line = k * zoneSize + halfZone;
-                    AddRibbon(plane, sign, normalValue, axis, line, centerAcross, line - centerAlong, ChunkLineWidth, ChunkLineLift,
-                        ChunkLineColor, segments, step, vertices, colors, indices);
-                }
+        // Adds ribbons at every `offset + k * zoneSize` along the given axis that fall within the grid radius.
+        private static void AddZoneLines(GridPlane plane, float sign, float normalValue, int axis, float offset, float centerAlong,
+            float centerAcross, float width, Color color, int segments, float step,
+            List<Vector3> vertices, List<Color> colors, List<int> indices)
+        {
+            const float zoneSize = ZoneSystem.c_ZoneSize;
+
+            int first = Mathf.CeilToInt((centerAlong - Radius - offset) / zoneSize);
+            int last = Mathf.FloorToInt((centerAlong + Radius - offset) / zoneSize);
+
+            for (int k = first; k <= last; k++)
+            {
+                float line = k * zoneSize + offset;
+                AddRibbon(plane, sign, normalValue, axis, line, centerAcross, line - centerAlong, width, ChunkLineLift,
+                    color, segments, step, vertices, colors, indices);
             }
         }
 
