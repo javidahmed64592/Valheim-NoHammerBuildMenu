@@ -16,7 +16,7 @@ namespace NoHammerBuildMenu
     {
         public const string PluginGUID = "javidahmed64592.nohammerbuildmenu";
         public const string PluginName = "No Hammer Build Menu";
-        public const string PluginVersion = "0.9.0";
+        public const string PluginVersion = "0.10.0";
 
         private const string HammerPrefabName = "Hammer";
         private const string ButtonName = "NoHammerBuildMenu_Toggle";
