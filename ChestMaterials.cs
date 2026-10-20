@@ -10,11 +10,16 @@ namespace NoHammerBuildMenu
     {
         private static ConfigEntry<bool> _enabled;
         private static ConfigEntry<float> _radius;
+        private static ConfigEntry<float> _groundRange;
 
         private static readonly List<Container> Containers = new List<Container>();
         private static readonly List<Container> NearbyCache = new List<Container>();
         private static readonly AccessTools.FieldRef<Container, ZNetView> NviewRef =
             AccessTools.FieldRefAccess<Container, ZNetView>("m_nview");
+
+        private static readonly List<ItemDrop> Drops = new List<ItemDrop>();
+        private static readonly AccessTools.FieldRef<ItemDrop, ZNetView> DropNviewRef =
+            AccessTools.FieldRefAccess<ItemDrop, ZNetView>("m_nview");
 
         private static int _nearbyFrame = -1;
         private static Vector3 _nearbyPos;
@@ -26,17 +31,72 @@ namespace NoHammerBuildMenu
 
         public static void BindConfig(ConfigFile config)
         {
-            const string section = "Chests";
-
-            _enabled = config.Bind(section, "Use Nearby Chests", true,
+            // Chests
+            _enabled = config.Bind("Chests", "Use Nearby Chests", true,
                 "When building, take any materials you are missing from your inventory out of nearby chests.");
-            _radius = config.Bind(section, "Radius", 30f,
+            _radius = config.Bind("Chests", "Radius", 30f,
                 new ConfigDescription("Distance in metres from the player within which chests are used for building materials.",
                     new AcceptableValueRange<float>(1f, 128f)));
+
+            // Ground items
+            _groundRange = config.Bind("Ground Items", "Radius", 10f,
+                new ConfigDescription("Distance in metres from the player within which items lying on the ground are used for building materials. Set to 0 to disable.",
+                    new AcceptableValueRange<float>(0f, 64f)));
         }
 
         private static bool Active(Player player) =>
-            _enabled != null && _enabled.Value && player != null && player == Player.m_localPlayer;
+            _enabled != null && player != null && player == Player.m_localPlayer
+            && (_enabled.Value || _groundRange.Value > 0f);
+
+        // Dropped items within range that match the requested item.
+        private static List<ItemDrop> GetGroundMatches(Player player, string name, int quality, bool matchWorldLevel)
+        {
+            List<ItemDrop> result = new List<ItemDrop>();
+            if (_groundRange.Value <= 0f)
+                return result;
+
+            Vector3 pos = player.transform.position;
+            float maxSqr = _groundRange.Value * _groundRange.Value;
+            Drops.RemoveAll(d => d == null);
+            foreach (ItemDrop drop in Drops)
+            {
+                ItemDrop.ItemData data = drop.m_itemData;
+                ZNetView nview = DropNviewRef(drop);
+                if (data == null || nview == null || !nview.IsValid()
+                    || drop.IsPiece()
+                    || data.m_shared.m_name != name
+                    || (quality >= 0 && quality != data.m_quality)
+                    || (matchWorldLevel && data.m_worldLevel < Game.m_worldLevel)
+                    || (drop.transform.position - pos).sqrMagnitude > maxSqr)
+                    continue;
+                result.Add(drop);
+            }
+
+            result.Sort((a, b) =>
+                (a.transform.position - pos).sqrMagnitude.CompareTo((b.transform.position - pos).sqrMagnitude));
+            return result;
+        }
+
+        private static int TakeFromGround(Player player, string name, int amount, int quality, bool matchWorldLevel)
+        {
+            foreach (ItemDrop drop in GetGroundMatches(player, name, quality, matchWorldLevel))
+            {
+                if (amount <= 0)
+                    break;
+
+                ZNetView nview = DropNviewRef(drop);
+                if (!nview.IsOwner())
+                    nview.ClaimOwnership();
+
+                int take = Mathf.Min(drop.m_itemData.m_stack, amount);
+                amount -= take;
+                if (take >= drop.m_itemData.m_stack)
+                    nview.Destroy();
+                else
+                    drop.SetStack(drop.m_itemData.m_stack - take);
+            }
+            return amount;
+        }
 
         // Chests within range that this player may take from, nearest first.
         private static List<Container> GetNearby(Player player)
@@ -48,6 +108,8 @@ namespace NoHammerBuildMenu
             _nearbyFrame = Time.frameCount;
             _nearbyPos = pos;
             NearbyCache.Clear();
+            if (!_enabled.Value)
+                return NearbyCache;
 
             float maxSqr = _radius.Value * _radius.Value;
             Containers.RemoveAll(c => c == null);
@@ -98,6 +160,7 @@ namespace NoHammerBuildMenu
 
         private static void TakeFromChests(Player player, string name, int amount, int quality, bool matchWorldLevel)
         {
+            amount = TakeFromGround(player, name, amount, quality, matchWorldLevel);
             foreach (Container container in GetNearby(player))
             {
                 if (amount <= 0)
@@ -114,6 +177,17 @@ namespace NoHammerBuildMenu
 
                 inventory.RemoveItem(name, take, quality, matchWorldLevel);
                 amount -= take;
+            }
+        }
+
+        [HarmonyPatch(typeof(ItemDrop), "Awake")]
+        private static class ItemDrop_Awake_Patch
+        {
+            [HarmonyPostfix]
+            private static void Postfix(ItemDrop __instance)
+            {
+                if (!Drops.Contains(__instance))
+                    Drops.Add(__instance);
             }
         }
 
@@ -180,6 +254,9 @@ namespace NoHammerBuildMenu
 
                 foreach (Container container in GetNearby(player))
                     __result += container.GetInventory().CountItems(name, quality, matchWorldLevel);
+
+                foreach (ItemDrop drop in GetGroundMatches(player, name, quality, matchWorldLevel))
+                    __result += drop.m_itemData.m_stack;
             }
         }
 
