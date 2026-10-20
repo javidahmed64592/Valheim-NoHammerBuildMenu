@@ -64,10 +64,10 @@ namespace NoHammerBuildMenu
             _segmentLength = config.Bind(section, "Segment Length", 0.5f,
                 new ConfigDescription("Line subdivision in metres so lines can follow terrain. Smaller is smoother but heavier.",
                     new AcceptableValueRange<float>(0.1f, 4f)));
-            _gridLineWidth = config.Bind(section, "Line Width", 0.05f,
+            _gridLineWidth = config.Bind(section, "Line Width", 0.06f,
                 new ConfigDescription("Width in metres of the grid lines at 2m intervals.",
                     new AcceptableValueRange<float>(0.01f, 1f)));
-            _minorLineScale = config.Bind(section, "Minor Line Width Scale", 0.6f,
+            _minorLineScale = config.Bind(section, "Minor Line Width Scale", 0.5f,
                 new ConfigDescription("Width of the grid lines between the 2m lines, as a fraction of Line Width. Set to 1 to draw every line the same thickness.",
                     new AcceptableValueRange<float>(0.1f, 1f)));
             _chunkLineWidth = config.Bind(section, "Chunk Line Width", 0.2f,
