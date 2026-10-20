@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.0
+
+- The hammer now uses items on the ground within a configurable range.
+- This can be adjusted by changing the `Radius` setting under the `Ground Items` section in the config file.
+- The build grid lines at 2m intervals now use the configured `Line Width`, and the lines in between are thinner (`Minor Line Width Scale`, default 0.5, set to 1 for uniform lines), making 2m distances (the size of many pieces) easy to read at any grid size.
+
 ## 0.9.0
 
 - The build grid now draws a distinct line through the centre of each world chunk, making it easy to find a chunk's centre. Its width and colour can be changed with the new `Chunk Centre Line Width` and `Chunk Centre Line Color` options in the `Grid Appearance` config section.
