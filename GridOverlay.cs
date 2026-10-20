@@ -22,6 +22,7 @@ namespace NoHammerBuildMenu
         private static ConfigEntry<float> _lift;            // height above the surface, keeps lines clear of grass and z-fighting
         private static ConfigEntry<float> _segmentLength;   // line subdivision so lines can follow terrain
         private static ConfigEntry<float> _gridLineWidth;   // width of the regular grid lines
+        private static ConfigEntry<float> _minorLineScale; // width of in-between lines relative to the 2m lines
         private static ConfigEntry<float> _chunkLineWidth;  // width of the thick lines drawn on world chunk (zone) borders
         private static ConfigEntry<float> _chunkLineLift;   // slightly above the grid lines so they draw on top
         private static ConfigEntry<Color> _lineColor;
@@ -36,6 +37,7 @@ namespace NoHammerBuildMenu
         private static float Lift => _lift.Value;
         private static float SegmentLength => _segmentLength.Value;
         private static float GridLineWidth => _gridLineWidth.Value;
+        private static float MinorLineWidth => GridLineWidth * _minorLineScale.Value;
         private static float ChunkLineWidth => _chunkLineWidth.Value;
         private static float ChunkLineLift => _chunkLineLift.Value;
         private static Color LineColor => _lineColor.Value;
@@ -63,8 +65,11 @@ namespace NoHammerBuildMenu
                 new ConfigDescription("Line subdivision in metres so lines can follow terrain. Smaller is smoother but heavier.",
                     new AcceptableValueRange<float>(0.1f, 4f)));
             _gridLineWidth = config.Bind(section, "Line Width", 0.06f,
-                new ConfigDescription("Width in metres of the regular grid lines.",
+                new ConfigDescription("Width in metres of the grid lines at 2m intervals.",
                     new AcceptableValueRange<float>(0.01f, 1f)));
+            _minorLineScale = config.Bind(section, "Minor Line Width Scale", 0.5f,
+                new ConfigDescription("Width of the grid lines between the 2m lines, as a fraction of Line Width. Set to 1 to draw every line the same thickness.",
+                    new AcceptableValueRange<float>(0.1f, 1f)));
             _chunkLineWidth = config.Bind(section, "Chunk Line Width", 0.2f,
                 new ConfigDescription("Width in metres of the thick lines drawn on world chunk (zone) borders.",
                     new AcceptableValueRange<float>(0.01f, 2f)));
@@ -216,8 +221,8 @@ namespace NoHammerBuildMenu
             for (int i = -half; i <= half; i++)
             {
                 float line = i * size;
-                AddRibbon(plane, sign, normalValue, 0, center.x + line, center.y, line, GridLineWidth, Lift, LineColor, segments, step, vertices, colors, indices);
-                AddRibbon(plane, sign, normalValue, 1, center.y + line, center.x, line, GridLineWidth, Lift, LineColor, segments, step, vertices, colors, indices);
+                AddRibbon(plane, sign, normalValue, 0, center.x + line, center.y, line, LineWidthAt(center.x + line), Lift, LineColor, segments, step, vertices, colors, indices);
+                AddRibbon(plane, sign, normalValue, 1, center.y + line, center.x, line, LineWidthAt(center.y + line), Lift, LineColor, segments, step, vertices, colors, indices);
             }
 
             AddChunkLines(plane, sign, normalValue, center, segments, step, vertices, colors, chunkIndices);
@@ -236,6 +241,15 @@ namespace NoHammerBuildMenu
             _builtPlane = plane;
             _builtSign = sign;
             _builtNormalValue = normalValue;
+        }
+
+        // Lines on a world coordinate that is a multiple of MajorInterval get the full width, the lines in between are thinner.
+        private const float MajorInterval = 2f;
+
+        private static float LineWidthAt(float coordinate)
+        {
+            float fromMajor = Mathf.Abs(coordinate - Mathf.Round(coordinate / MajorInterval) * MajorInterval);
+            return fromMajor < 0.001f ? GridLineWidth : MinorLineWidth;
         }
 
         // Draws a thick ribbon along every world chunk (zone) border within the grid's radius.
