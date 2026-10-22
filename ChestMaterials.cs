@@ -39,7 +39,7 @@ namespace NoHammerBuildMenu
                     new AcceptableValueRange<float>(1f, 128f)));
 
             // Ground items
-            _groundRange = config.Bind("Ground Items", "Radius", 10f,
+            _groundRange = config.Bind("Ground Items", "Radius", 30f,
                 new ConfigDescription("Distance in metres from the player within which items lying on the ground are used for building materials. Set to 0 to disable.",
                     new AcceptableValueRange<float>(0f, 64f)));
         }
