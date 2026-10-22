@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.1
+
+- Increased the default radius for nearby ground items from 10m to 30m.
+
 ## 0.10.0
 
 - The hammer now uses items on the ground within a configurable range.
