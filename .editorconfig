@@ -30,6 +30,28 @@ dotnet_diagnostic.RCS1141.severity = none
 # The switch in KeyHintUI already covers every enum member; the analyzer still flags it
 dotnet_diagnostic.IDE0010.severity = none
 
+# Unity messages (Awake, Update) and Harmony patch methods (Prefix, Postfix) are invoked
+# by reflection, so these rules (and Roslynator RCS1213) misreport them as unused and
+# `dotnet format` would delete them
+dotnet_diagnostic.IDE0051.severity = none
+dotnet_diagnostic.IDE0052.severity = none
+dotnet_diagnostic.RCS1213.severity = none
+
+# UnityEngine.Object overloads ==, so ReferenceEquals(obj, null) is a deliberate "not fake-null"
+# check that `is null` would break (and the IDE0041 fix mangles it into invalid code)
+dotnet_diagnostic.IDE0041.severity = none
+
+# Likewise `?.` and `??` skip Unity's overloaded null check, so they misbehave on destroyed objects
+dotnet_diagnostic.IDE0029.severity = none
+dotnet_diagnostic.IDE0030.severity = none
+dotnet_diagnostic.IDE0031.severity = none
+dotnet_diagnostic.IDE0270.severity = none
+dotnet_diagnostic.RCS1146.severity = none
+dotnet_diagnostic.RCS1206.severity = none
+
+# The Harmony instance is unpatched in OnDestroy, so the plugin doesn't need to be IDisposable
+dotnet_diagnostic.CA1001.severity = none
+
 #### Core EditorConfig Options ####
 
 # Indentation and spacing
@@ -67,11 +89,11 @@ dotnet_style_parentheses_in_relational_binary_operators = always_for_clarity:sil
 dotnet_style_require_accessibility_modifiers = for_non_interface_members:silent
 
 # Expression-level preferences
-dotnet_style_coalesce_expression = true:suggestion
+dotnet_style_coalesce_expression = false
 dotnet_style_collection_initializer = true:suggestion
 dotnet_style_explicit_tuple_names = true:suggestion
 dotnet_style_namespace_match_folder = true:suggestion
-dotnet_style_null_propagation = true:suggestion
+dotnet_style_null_propagation = false
 dotnet_style_object_initializer = true:suggestion
 dotnet_style_operator_placement_when_wrapping = beginning_of_line
 dotnet_style_prefer_auto_properties = true:suggestion
@@ -82,7 +104,7 @@ dotnet_style_prefer_conditional_expression_over_return = true:suggestion
 dotnet_style_prefer_foreach_explicit_cast_in_source = when_strongly_typed:suggestion
 dotnet_style_prefer_inferred_anonymous_type_member_names = true:suggestion
 dotnet_style_prefer_inferred_tuple_names = true:suggestion
-dotnet_style_prefer_is_null_check_over_reference_equality_method = true:suggestion
+dotnet_style_prefer_is_null_check_over_reference_equality_method = false
 dotnet_style_prefer_simplified_boolean_expressions = true:suggestion
 dotnet_style_prefer_simplified_interpolation = true:suggestion
 
