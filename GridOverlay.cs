@@ -239,17 +239,12 @@ internal sealed class GridOverlay
     /// WallX:                  a = z, b = y, n = x
     /// WallZ:                  a = x, b = y, n = z
     /// </summary>
-    /// <exception cref="System.NotImplementedException"></exception>
     private static Vector2 ToPlane(GridPlane plane, Vector3 p)
     {
         return plane switch
         {
             GridPlane.WallX => new Vector2(p.z, p.y),
             GridPlane.WallZ => new Vector2(p.x, p.y),
-            GridPlane.None => throw new System.NotImplementedException(),
-            GridPlane.Terrain => throw new System.NotImplementedException(),
-            GridPlane.Top => throw new System.NotImplementedException(),
-            GridPlane.Bottom => throw new System.NotImplementedException(),
             _ => new Vector2(p.x, p.z),
         };
     }
@@ -260,10 +255,6 @@ internal sealed class GridOverlay
         {
             GridPlane.WallX => p.x,
             GridPlane.WallZ => p.z,
-            GridPlane.None => throw new System.NotImplementedException(),
-            GridPlane.Terrain => throw new System.NotImplementedException(),
-            GridPlane.Top => throw new System.NotImplementedException(),
-            GridPlane.Bottom => throw new System.NotImplementedException(),
             _ => p.y,
         };
     }
@@ -274,10 +265,6 @@ internal sealed class GridOverlay
         {
             GridPlane.WallX => new Vector3(n, b, a),
             GridPlane.WallZ => new Vector3(a, b, n),
-            GridPlane.None => throw new System.NotImplementedException(),
-            GridPlane.Terrain => throw new System.NotImplementedException(),
-            GridPlane.Top => throw new System.NotImplementedException(),
-            GridPlane.Bottom => throw new System.NotImplementedException(),
             _ => new Vector3(a, n, b),
         };
     }

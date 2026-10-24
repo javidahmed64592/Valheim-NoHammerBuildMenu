@@ -27,8 +27,10 @@ dotnet_analyzer_diagnostic.category-roslynator.severity = warning
 # Conflicts with RCS1228, which flags the empty <param> elements RCS1141 adds
 dotnet_diagnostic.RCS1141.severity = none
 
-# The switch in KeyHintUI already covers every enum member; the analyzer still flags it
+# Populating switches fills in every enum member, which turns catch-all `default`/`_` arms into
+# separate arms (GridOverlay's plane switches ended up throwing for the horizontal planes)
 dotnet_diagnostic.IDE0010.severity = none
+dotnet_diagnostic.IDE0072.severity = none
 
 # Unity messages (Awake, Update) and Harmony patch methods (Prefix, Postfix) are invoked
 # by reflection, so these rules (and Roslynator RCS1213) misreport them as unused and
