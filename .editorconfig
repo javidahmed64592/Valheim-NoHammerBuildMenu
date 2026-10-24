@@ -24,6 +24,12 @@ indent_size = 2
 dotnet_analyzer_diagnostic.category-Style.severity = warning
 dotnet_analyzer_diagnostic.category-roslynator.severity = warning
 
+# Conflicts with RCS1228, which flags the empty <param> elements RCS1141 adds
+dotnet_diagnostic.RCS1141.severity = none
+
+# The switch in KeyHintUI already covers every enum member; the analyzer still flags it
+dotnet_diagnostic.IDE0010.severity = none
+
 #### Core EditorConfig Options ####
 
 # Indentation and spacing
@@ -235,9 +241,7 @@ dotnet_naming_rule.local_constants_should_be_camelcase.severity = suggestion
 dotnet_naming_rule.local_constants_should_be_camelcase.symbols = local_constants
 dotnet_naming_rule.local_constants_should_be_camelcase.style = camelcase
 
-dotnet_naming_rule.parameters_should_be_camelcase.severity = suggestion
-dotnet_naming_rule.parameters_should_be_camelcase.symbols = parameters
-dotnet_naming_rule.parameters_should_be_camelcase.style = camelcase
+# No parameter naming rule: Harmony requires injected parameters named like __instance and __result.
 
 dotnet_naming_rule.public_fields_should_be_pascalcase.severity = suggestion
 dotnet_naming_rule.public_fields_should_be_pascalcase.symbols = public_fields
@@ -246,10 +250,6 @@ dotnet_naming_rule.public_fields_should_be_pascalcase.style = pascalcase
 dotnet_naming_rule.private_fields_should_be__camelcase.severity = suggestion
 dotnet_naming_rule.private_fields_should_be__camelcase.symbols = private_fields
 dotnet_naming_rule.private_fields_should_be__camelcase.style = _camelcase
-
-dotnet_naming_rule.private_static_fields_should_be_s_camelcase.severity = suggestion
-dotnet_naming_rule.private_static_fields_should_be_s_camelcase.symbols = private_static_fields
-dotnet_naming_rule.private_static_fields_should_be_s_camelcase.style = s_camelcase
 
 dotnet_naming_rule.public_constant_fields_should_be_pascalcase.severity = suggestion
 dotnet_naming_rule.public_constant_fields_should_be_pascalcase.symbols = public_constant_fields
@@ -302,16 +302,12 @@ dotnet_naming_symbols.properties.applicable_accessibilities = public, internal, 
 dotnet_naming_symbols.properties.required_modifiers =
 
 dotnet_naming_symbols.public_fields.applicable_kinds = field
-dotnet_naming_symbols.public_fields.applicable_accessibilities = public, internal
+dotnet_naming_symbols.public_fields.applicable_accessibilities = public
 dotnet_naming_symbols.public_fields.required_modifiers =
 
 dotnet_naming_symbols.private_fields.applicable_kinds = field
-dotnet_naming_symbols.private_fields.applicable_accessibilities = private, protected, protected_internal, private_protected
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private, internal, protected, protected_internal, private_protected
 dotnet_naming_symbols.private_fields.required_modifiers =
-
-dotnet_naming_symbols.private_static_fields.applicable_kinds = field
-dotnet_naming_symbols.private_static_fields.applicable_accessibilities = private, protected, protected_internal, private_protected
-dotnet_naming_symbols.private_static_fields.required_modifiers = static
 
 dotnet_naming_symbols.types_and_namespaces.applicable_kinds = namespace, class, struct, interface, enum
 dotnet_naming_symbols.types_and_namespaces.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
@@ -384,7 +380,3 @@ dotnet_naming_style.camelcase.required_suffix =
 dotnet_naming_style.camelcase.word_separator =
 dotnet_naming_style.camelcase.capitalization = camel_case
 
-dotnet_naming_style.s_camelcase.required_prefix = s_
-dotnet_naming_style.s_camelcase.required_suffix =
-dotnet_naming_style.s_camelcase.word_separator =
-dotnet_naming_style.s_camelcase.capitalization = camel_case

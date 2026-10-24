@@ -62,10 +62,6 @@ internal static class ChestMaterials
     /// <summary>
     /// Dropped items within range that match the requested item.
     /// </summary>
-    /// <param name="player"></param>
-    /// <param name="name"></param>
-    /// <param name="quality"></param>
-    /// <param name="matchWorldLevel"></param>
     private static List<ItemDrop> GetGroundMatches(Player player, string name, int quality, bool matchWorldLevel)
     {
         List<ItemDrop> result = [];
@@ -131,7 +127,6 @@ internal static class ChestMaterials
     /// <summary>
     /// Chests within range that this player may take from, nearest first.
     /// </summary>
-    /// <param name="player"></param>
     private static List<Container> GetNearby(Player player)
     {
         Vector3 pos = player.transform.position;
@@ -166,7 +161,6 @@ internal static class ChestMaterials
     /// <summary>
     /// Only player-built chests that the player could open normally and that nobody is using.
     /// </summary>
-    /// <param name="container"></param>
     private static bool CanTakeFrom(Container container)
     {
         if (container.GetInventory() == null
