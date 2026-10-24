@@ -1,22 +1,21 @@
 using HarmonyLib;
 
-namespace NoHammerBuildMenu.Patches;
-
-/// <summary>
-/// Makes EquipItem accept the phantom hammer despite it not being in the player's inventory.
-/// </summary>
-[HarmonyPatch(typeof(Inventory), nameof(Inventory.ContainsItem))]
-internal static class Inventory_ContainsItem_Patch
+namespace NoHammerBuildMenu
 {
-    [HarmonyPrefix]
-    private static bool Prefix(ItemDrop.ItemData item, ref bool __result)
+    // Makes EquipItem accept the phantom hammer despite it not being in the player's inventory.
+    [HarmonyPatch(typeof(Inventory), nameof(Inventory.ContainsItem))]
+    internal static class Inventory_ContainsItem_Patch
     {
-        ItemDrop.ItemData phantom = NoHammerBuildMenuPlugin._phantomHammer;
-        if (phantom != null && item == phantom)
+        [HarmonyPrefix]
+        private static bool Prefix(ItemDrop.ItemData item, ref bool __result)
         {
-            __result = true;
-            return false;
+            ItemDrop.ItemData phantom = NoHammerBuildMenuPlugin._phantomHammer;
+            if (phantom != null && item == phantom)
+            {
+                __result = true;
+                return false;
+            }
+            return true;
         }
-        return true;
     }
 }

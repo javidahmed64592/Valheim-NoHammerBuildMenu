@@ -1,20 +1,17 @@
 using HarmonyLib;
 
-namespace NoHammerBuildMenu.Patches;
-
-/// <summary>
-/// Vanilla only zooms the camera while placing if the piece can't rotate (it uses scroll to
-/// rotate otherwise). Report "can't rotate" while Alt is held so the camera zooms instead.
-/// </summary>
-[HarmonyPatch(typeof(Player), nameof(Player.CanRotatePiece))]
-internal static class Player_CanRotatePiece_Patch
+namespace NoHammerBuildMenu
 {
-    [HarmonyPostfix]
-    private static void Postfix(Player __instance, ref bool __result)
+    // Vanilla only zooms the camera while placing if the piece can't rotate (it uses scroll to
+    // rotate otherwise). Report "can't rotate" while Alt is held so the camera zooms instead.
+    [HarmonyPatch(typeof(Player), nameof(Player.CanRotatePiece))]
+    internal static class Player_CanRotatePiece_Patch
     {
-        if (__result && NoHammerBuildMenuPlugin.AltZoomActive(__instance))
+        [HarmonyPostfix]
+        private static void Postfix(Player __instance, ref bool __result)
         {
-            __result = false;
+            if (__result && NoHammerBuildMenuPlugin.AltZoomActive(__instance))
+                __result = false;
         }
     }
 }
