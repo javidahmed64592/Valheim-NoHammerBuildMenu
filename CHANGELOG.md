@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added an `.editorconfig`, `Directory.Build.props` and a CI workflow that runs `dotnet format` and a Release build.
+- Reformatted the code to match the new code style rules (no behaviour change).
+- Moved the Harmony patches into the `NoHammerBuildMenu.Patches` namespace.
+
 ## 0.10.1
 
 - Increased the default radius for nearby ground items from 10m to 30m.
