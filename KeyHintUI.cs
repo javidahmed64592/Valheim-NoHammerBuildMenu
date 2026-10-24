@@ -106,6 +106,8 @@ internal static class KeyHintUI
                     visible = !repairing;
                     blank = !gridOn;
                     break;
+                case HintVisibility.Always:
+                    break;
             }
 
             if (hint.Item.activeSelf != visible)

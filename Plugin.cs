@@ -43,6 +43,7 @@ public class NoHammerBuildMenuPlugin : BaseUnityPlugin
     /// hammer, any build tool with a piece table whose item, prefab or table name mentions
     /// "hammer" counts, which covers vanilla and modded hammers.
     /// </summary>
+    /// <param name="player"></param>
     internal static bool IsHammerEquipped(Player player)
     {
         ItemDrop.ItemData item = player.GetRightItem();
@@ -86,6 +87,7 @@ public class NoHammerBuildMenuPlugin : BaseUnityPlugin
     /// <summary>
     /// Alt+scroll zooms the camera while placing with a hammer.
     /// </summary>
+    /// <param name="player"></param>
     internal static bool AltZoomActive(Player player)
     {
         return player == Player.m_localPlayer && AltHeld() && player.InPlaceMode() && IsHammerEquipped(player);

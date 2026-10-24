@@ -143,6 +143,10 @@ internal class GridOverlay
     /// `aim` is the grid-snapped aim point. `sign` is the direction the surface faces along its
     /// normal axis, so the grid is lifted off the surface towards the viewer.
     /// </summary>
+    /// <param name="aim"></param>
+    /// <param name="size"></param>
+    /// <param name="plane"></param>
+    /// <param name="sign"></param>
     public void Show(Vector3 aim, float size, GridPlane plane, float sign)
     {
         if (!EnsureObject())
@@ -239,6 +243,8 @@ internal class GridOverlay
     /// WallX:                  a = z, b = y, n = x
     /// WallZ:                  a = x, b = y, n = z
     /// </summary>
+    /// <param name="plane"></param>
+    /// <param name="p"></param>
     /// <exception cref="System.NotImplementedException"></exception>
     private static Vector2 ToPlane(GridPlane plane, Vector3 p)
     {
@@ -334,6 +340,15 @@ internal class GridOverlay
     /// Zone borders sit half a zone size from the zone centres, i.e. at 32 + 64k. Chunks only
     /// divide x and z, so a wall plane has borders along its horizontal axis only.
     /// </summary>
+    /// <param name="plane"></param>
+    /// <param name="sign"></param>
+    /// <param name="normalValue"></param>
+    /// <param name="center"></param>
+    /// <param name="segments"></param>
+    /// <param name="step"></param>
+    /// <param name="vertices"></param>
+    /// <param name="colors"></param>
+    /// <param name="indices"></param>
     private static void AddChunkLines(GridPlane plane, float sign, float normalValue, Vector2 center, int segments, float step,
         List<Vector3> vertices, List<Color> colors, List<int> indices)
     {
@@ -358,6 +373,20 @@ internal class GridOverlay
     /// <summary>
     /// Adds ribbons at every `offset + k * zoneSize` along the given axis that fall within the grid radius.
     /// </summary>
+    /// <param name="plane"></param>
+    /// <param name="sign"></param>
+    /// <param name="normalValue"></param>
+    /// <param name="axis"></param>
+    /// <param name="offset"></param>
+    /// <param name="centerAlong"></param>
+    /// <param name="centerAcross"></param>
+    /// <param name="width"></param>
+    /// <param name="color"></param>
+    /// <param name="segments"></param>
+    /// <param name="step"></param>
+    /// <param name="vertices"></param>
+    /// <param name="colors"></param>
+    /// <param name="indices"></param>
     private static void AddZoneLines(GridPlane plane, float sign, float normalValue, int axis, float offset, float centerAlong,
         float centerAcross, float width, Color color, int segments, float step,
         List<Vector3> vertices, List<Color> colors, List<int> indices)
@@ -380,6 +409,21 @@ internal class GridOverlay
     /// axis 0, `b` for axis 1), spanning the grid radius around `centerAcross`. `lineOffset` is
     /// the line's distance from the grid centre, used for the distance fade.
     /// </summary>
+    /// <param name="plane"></param>
+    /// <param name="sign"></param>
+    /// <param name="normalValue"></param>
+    /// <param name="axis"></param>
+    /// <param name="line"></param>
+    /// <param name="centerAcross"></param>
+    /// <param name="lineOffset"></param>
+    /// <param name="width"></param>
+    /// <param name="lift"></param>
+    /// <param name="baseColor"></param>
+    /// <param name="segments"></param>
+    /// <param name="step"></param>
+    /// <param name="vertices"></param>
+    /// <param name="colors"></param>
+    /// <param name="indices"></param>
     private static void AddRibbon(GridPlane plane, float sign, float normalValue, int axis, float line, float centerAcross,
         float lineOffset, float width, float lift, Color baseColor, int segments, float step,
         List<Vector3> vertices, List<Color> colors, List<int> indices)
