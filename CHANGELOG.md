@@ -5,6 +5,8 @@
 - Added an `.editorconfig`, `Directory.Build.props` and a CI workflow that runs `dotnet format` and a Release build.
 - Reformatted the code to match the new code style rules (no behaviour change).
 - Moved the Harmony patches into the `NoHammerBuildMenu.Patches` namespace.
+- Tidied up packaging scripts and workflow files.
+- Updated README and icon.
 
 ## 0.10.1
 
