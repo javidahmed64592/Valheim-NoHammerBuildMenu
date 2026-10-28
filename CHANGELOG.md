@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.1
+
+- Updated the BepInExPack_Valheim dependency to 5.4.2360.
+
 ## 0.11.0
 
 - Added an `.editorconfig`, `Directory.Build.props` and a CI workflow that runs `dotnet format`, a Release build and a NuGet vulnerability check.
