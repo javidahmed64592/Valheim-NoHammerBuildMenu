@@ -15,6 +15,7 @@ This mod adds several improvements to the vanilla base hammer:
 | `Alt+Scroll`                 | Zoom the camera in and out without needing to unequip the hammer. |
 
 Additionally, the hammer also uses materials from the ground and nearby chests when your inventory runs short.
+The total quantity of each required material is displayed, including items in your inventory, nearby chests, and on the ground within range.
 
 ## Build Grid
 

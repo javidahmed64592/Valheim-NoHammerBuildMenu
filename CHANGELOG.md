@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.0
+
+- The requirement list in the build panel now shows the total available before the amount needed (e.g. `Wood 64/2`). The total includes your inventory, nearby chests and ground items within range.
+
 ## 0.11.1
 
 - Updated the BepInExPack_Valheim dependency to 5.4.2360.

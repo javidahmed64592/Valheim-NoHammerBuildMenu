@@ -4,6 +4,8 @@ using BepInEx.Configuration;
 
 using HarmonyLib;
 
+using TMPro;
+
 using UnityEngine;
 
 namespace NoHammerBuildMenu;
@@ -296,6 +298,47 @@ internal static class ChestMaterials
             if (__state)
             {
                 _countDepth++;
+            }
+        }
+
+        /// <summary>
+        /// Shows "total/required" for each material, where total covers the inventory, chests and ground items in range.
+        /// </summary>
+        [HarmonyPostfix]
+        private static void Postfix(Hud __instance, Piece piece, bool __state)
+        {
+            if (!__state || piece == null)
+            {
+                return;
+            }
+
+            Player player = Player.m_localPlayer;
+            _countDepth++;
+            try
+            {
+                for (int i = 0; i < piece.m_resources.Length && i < __instance.m_requirementItems.Length; i++)
+                {
+                    Piece.Requirement req = piece.m_resources[i];
+                    int need = req.GetAmount(0);
+                    if (req.m_resItem == null || need <= 0)
+                    {
+                        continue;
+                    }
+
+                    Transform amountTransform = __instance.m_requirementItems[i].transform.Find("res_amount");
+                    TMP_Text amountText = amountTransform != null ? amountTransform.GetComponent<TMP_Text>() : null;
+                    if (amountText == null)
+                    {
+                        continue;
+                    }
+
+                    int total = player.GetInventory().CountItems(req.m_resItem.m_itemData.m_shared.m_name);
+                    amountText.text = $"{total}/{need}";
+                }
+            }
+            finally
+            {
+                _countDepth--;
             }
         }
 
