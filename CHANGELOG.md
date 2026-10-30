@@ -2,7 +2,7 @@
 
 ## 0.12.0
 
-- The requirement list in the build panel now shows the total available next to the amount needed (e.g. `Wood 2/64`). The total includes your inventory, nearby chests and ground items within range.
+- The requirement list in the build panel now shows the total available before the amount needed (e.g. `Wood 64/2`). The total includes your inventory, nearby chests and ground items within range.
 
 ## 0.11.1
 

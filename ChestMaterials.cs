@@ -302,7 +302,7 @@ internal static class ChestMaterials
         }
 
         /// <summary>
-        /// Shows "required/total" for each material, where total covers the inventory, chests and ground items in range.
+        /// Shows "total/required" for each material, where total covers the inventory, chests and ground items in range.
         /// </summary>
         [HarmonyPostfix]
         private static void Postfix(Hud __instance, Piece piece, bool __state)
@@ -333,7 +333,7 @@ internal static class ChestMaterials
                     }
 
                     int total = player.GetInventory().CountItems(req.m_resItem.m_itemData.m_shared.m_name);
-                    amountText.text = $"{need}/{total}";
+                    amountText.text = $"{total}/{need}";
                 }
             }
             finally
